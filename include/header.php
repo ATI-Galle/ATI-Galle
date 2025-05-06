@@ -101,8 +101,8 @@ drift.load('cszcvrhysx35');
   {
     ?>
   
-                               <li><img src="images/all-icon/map.png" alt="icon"><span><?php echo htmlentities($row['Contact_Information']);?></span></li>
-                               <li><img src="images/all-icon/email.png" alt="icon"><span>info@myproject.x10.bz</span></li>
+                               <li><img src="img/all-icon/map.png" alt="icon"><span><?php echo htmlentities($row['Contact_Information']);?></span></li>
+                               <li><img src="img/all-icon/email.png" alt="icon"><span>info@myproject.x10.bz</span></li>
                                <?php }?>   </ul>
                        </div>
                    </div>
