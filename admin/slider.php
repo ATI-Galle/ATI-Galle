@@ -1,15 +1,21 @@
+<?php include("include/header.php");?>
+<?php include("include/sidebar.php");?>
+
 <?php
-
-
 include ("include/config.php");
 
-
-
 // Optional: Set character set
-$conn->set_charset("utf8mb4");
+if (isset($conn) && $conn instanceof mysqli) {
+    $conn->set_charset("utf8mb4");
+} else {
+    error_log("Database connection (\$conn) not properly initialized in config.php");
+    // exit("Database connection error."); // Optionally stop execution
+}
+
 
 // --- PHP Logic for Handling Actions (Insert, Update, Delete, Activate/Deactivate) ---
-$message = ''; // Variable to store success/error messages
+$message = ''; 
+$message_type = ''; // To control message style (success/error)
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $action = $_POST['action'] ?? '';
@@ -18,65 +24,63 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         case 'insert':
             $stitle = $_POST['stitle'] ?? '';
             $stext = $_POST['stext'] ?? '';
-            $simg = ''; // Initialize image path
-            $status = 1; // Default status to active
+            $simg = ''; 
+            $status = 1; 
+            $uploadOk = 1; // Assume upload will be okay initially
 
-            // Handle image upload
             if (isset($_FILES['simg']) && $_FILES['simg']['error'] == 0) {
-                $target_dir = "uploads/"; // Create an 'uploads' directory
-                // Ensure the uploads directory exists
+                $target_dir = "uploads/sliders/"; // Specific directory for sliders
                 if (!is_dir($target_dir)) {
-                    mkdir($target_dir, 0777, true);
-                }
-
-                $target_file = $target_dir . basename($_FILES["simg"]["name"]);
-                $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
-                $uploadOk = 1;
-
-                // Check if image file is a actual image or fake image
-                $check = getimagesize($_FILES["simg"]["tmp_name"]);
-                if($check === false) {
-                    $message = "File is not an image.";
-                    $uploadOk = 0;
-                }
-
-                // Check file size (optional, adjust as needed)
-                if ($_FILES["simg"]["size"] > 5000000) { // 5MB limit
-                    $message = "Sorry, your file is too large.";
-                    $uploadOk = 0;
-                }
-
-                // Allow certain file formats
-                if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg"
-                && $imageFileType != "gif" ) {
-                    $message = "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
-                    $uploadOk = 0;
-                }
-
-                // Check if $uploadOk is set to 0 by an error
-                if ($uploadOk == 0) {
-                    $message = "Sorry, your file was not uploaded. " . $message;
-                } else {
-                    // if everything is ok, try to upload file
-                    if (move_uploaded_file($_FILES["simg"]["tmp_name"], $target_file)) {
-                        $simg = $target_file;
-                    } else {
-                        $message = "Sorry, there was an error uploading your file.";
+                    if (!mkdir($target_dir, 0777, true)) {
+                         $message = "Error: Failed to create upload directory.";
+                         $message_type = 'error';
+                         $uploadOk = 0;
                     }
                 }
+                
+                if ($uploadOk) {
+                    $image_name = preg_replace('/[^a-zA-Z0-9\.\_\-]/', '_', basename($_FILES["simg"]["name"]));
+                    $target_file = $target_dir . time() . "_" . $image_name;
+                    $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
+
+                    $check = getimagesize($_FILES["simg"]["tmp_name"]);
+                    if($check === false) {
+                        $message = "File is not a valid image."; $message_type = 'error'; $uploadOk = 0;
+                    }
+                    if ($_FILES["simg"]["size"] > 5000000) { // 5MB
+                        $message = "Sorry, image is too large (Max 5MB)."; $message_type = 'error'; $uploadOk = 0;
+                    }
+                    $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                    if(!in_array($imageFileType, $allowed_types)) {
+                        $message = "Sorry, only JPG, JPEG, PNG, GIF, WEBP allowed."; $message_type = 'error'; $uploadOk = 0;
+                    }
+
+                    if ($uploadOk) {
+                        if (move_uploaded_file($_FILES["simg"]["tmp_name"], $target_file)) {
+                            $simg = $target_file;
+                        } else {
+                            $message = "Error uploading image."; $message_type = 'error'; $uploadOk = 0;
+                        }
+                    }
+                }
+            } elseif (isset($_FILES['simg']) && $_FILES['simg']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $message = "Image upload error: Code " . $_FILES['simg']['error']; $message_type = 'error'; $uploadOk = 0;
             }
 
-            // Prepare and bind
-            if (empty($message) || (!empty($message) && $simg != '')) { // Only insert if no upload error or if image uploaded
-                 $stmt = $conn->prepare("INSERT INTO slider (stitle, stext, simg, created_at, updated_at, status) VALUES (?, ?, ?, NOW(), NOW(), ?)");
-                 $stmt->bind_param("sssi", $stitle, $stext, $simg, $status);
 
-                 if ($stmt->execute()) {
-                     $message = "New record created successfully";
-                 } else {
-                     $message = "Error: " . $stmt->error;
-                 }
-                 $stmt->close();
+            if ($uploadOk) { // Proceed only if upload was okay or no new image was attempted
+                 if (!empty($stitle)) { // Basic validation
+                    $stmt = $conn->prepare("INSERT INTO slider (stitle, stext, simg, created_at, updated_at, status) VALUES (?, ?, ?, NOW(), NOW(), ?)");
+                    $stmt->bind_param("sssi", $stitle, $stext, $simg, $status);
+                    if ($stmt->execute()) {
+                        $message = "New slider created successfully."; $message_type = 'success';
+                    } else {
+                        $message = "Error creating slider: " . $stmt->error; $message_type = 'error';
+                    }
+                    $stmt->close();
+                } else {
+                    $message = "Slider title cannot be empty."; $message_type = 'error';
+                }
             }
             break;
 
@@ -85,326 +89,363 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stitle = $_POST['stitle'] ?? '';
             $stext = $_POST['stext'] ?? '';
             $existing_simg = $_POST['existing_simg'] ?? '';
-            $simg = $existing_simg; // Keep existing image by default
+            $simg = $existing_simg;
+            $uploadOk = 1;
+            $new_image_uploaded = false;
 
-            // Handle new image upload
             if (isset($_FILES['simg']) && $_FILES['simg']['error'] == 0) {
-                 $target_dir = "uploads/";
-                 // Ensure the uploads directory exists
+                $target_dir = "uploads/sliders/"; 
                  if (!is_dir($target_dir)) {
-                     mkdir($target_dir, 0777, true);
-                 }
-                 $target_file = $target_dir . basename($_FILES["simg"]["name"]);
-                 $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
-                 $uploadOk = 1;
-
-                 // Check if image file is a actual image or fake image
-                 $check = getimagesize($_FILES["simg"]["tmp_name"]);
-                 if($check === false) {
-                     $message = "New file is not an image.";
-                     $uploadOk = 0;
-                 }
-
-                 // Check file size (optional, adjust as needed)
-                 if ($_FILES["simg"]["size"] > 5000000) { // 5MB limit
-                     $message = "Sorry, your new file is too large.";
-                     $uploadOk = 0;
-                 }
-
-                 // Allow certain file formats
-                 if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg"
-                 && $imageFileType != "gif" ) {
-                     $message = "Sorry, only JPG, JPEG, PNG & GIF files are allowed for new image.";
-                     $uploadOk = 0;
-                 }
-
-                 // Check if $uploadOk is set to 0 by an error
-                 if ($uploadOk == 0) {
-                     $message = "Sorry, your new file was not uploaded. " . $message;
-                 } else {
-                     // if everything is ok, try to upload file
-                     if (move_uploaded_file($_FILES["simg"]["tmp_name"], $target_file)) {
-                         $simg = $target_file;
-                         // Optional: Delete old image if it exists
-                         if (!empty($existing_simg) && file_exists($existing_simg)) {
-                             unlink($existing_simg);
-                         }
-                     } else {
-                         $message = "Sorry, there was an error uploading your new file.";
-                     }
-                 }
-            }
-
-            // Prepare and bind
-            if (!empty($sid)) { // Ensure SID is present for update
-                $stmt = $conn->prepare("UPDATE slider SET stitle=?, stext=?, simg=?, updated_at=NOW() WHERE sid=?");
-                $stmt->bind_param("sssi", $stitle, $stext, $simg, $sid);
-
-                if ($stmt->execute()) {
-                    $message = "Record updated successfully";
-                } else {
-                    $message = "Error updating record: " . $stmt->error;
+                    if (!mkdir($target_dir, 0777, true)) {
+                         $message = "Error: Failed to create upload directory.";
+                         $message_type = 'error';
+                         $uploadOk = 0;
+                    }
                 }
-                $stmt->close();
-            } else {
-                 $message = "Error: Slider ID not provided for update.";
+
+                if($uploadOk){
+                    $image_name = preg_replace('/[^a-zA-Z0-9\.\_\-]/', '_', basename($_FILES["simg"]["name"]));
+                    $target_file = $target_dir . time() . "_" . $image_name;
+                    $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
+                    
+                    $check = getimagesize($_FILES["simg"]["tmp_name"]);
+                    if($check === false) { $message = "New file is not an image."; $message_type = 'error'; $uploadOk = 0; }
+                    if ($_FILES["simg"]["size"] > 5000000) { $message = "Sorry, new image is too large."; $message_type = 'error'; $uploadOk = 0; }
+                    $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                    if(!in_array($imageFileType, $allowed_types)) { $message = "Sorry, only JPG, JPEG, PNG, GIF, WEBP allowed for new image."; $message_type = 'error'; $uploadOk = 0; }
+
+                    if ($uploadOk) {
+                        if (move_uploaded_file($_FILES["simg"]["tmp_name"], $target_file)) {
+                            $simg = $target_file;
+                            $new_image_uploaded = true;
+                            if (!empty($existing_simg) && $existing_simg !== $simg && file_exists($existing_simg)) {
+                                @unlink($existing_simg);
+                            }
+                        } else { $message = "Error uploading new image."; $message_type = 'error'; $uploadOk = 0; }
+                    }
+                }
+            } elseif (isset($_FILES['simg']) && $_FILES['simg']['error'] !== UPLOAD_ERR_NO_FILE) {
+                 $message = "Image upload error: Code " . $_FILES['simg']['error']; $message_type = 'error'; $uploadOk = 0;
+            }
+            
+            if ($uploadOk) {
+                if (!empty($sid) && !empty($stitle)) {
+                    $stmt = $conn->prepare("UPDATE slider SET stitle=?, stext=?, simg=?, updated_at=NOW() WHERE sid=?");
+                    $stmt->bind_param("sssi", $stitle, $stext, $simg, $sid);
+                    if ($stmt->execute()) {
+                        $message = "Slider updated successfully."; $message_type = 'success';
+                    } else {
+                        $message = "Error updating slider: " . $stmt->error; $message_type = 'error';
+                    }
+                    $stmt->close();
+                } else {
+                    $message = "Error: Slider ID or Title missing for update."; $message_type = 'error';
+                }
             }
             break;
 
         case 'delete':
             $sid = $_POST['sid'] ?? '';
-
             if (!empty($sid)) {
-                // Optional: Get image path before deleting the record to delete the image file
+                $image_path_to_delete = '';
                 $stmt_img = $conn->prepare("SELECT simg FROM slider WHERE sid = ?");
                 $stmt_img->bind_param("i", $sid);
-                $stmt_img->execute();
-                $stmt_img->bind_result($image_path);
-                $stmt_img->fetch();
+                if ($stmt_img->execute()) { $stmt_img->bind_result($image_path_to_delete); $stmt_img->fetch(); }
                 $stmt_img->close();
 
-                // Prepare and bind for deletion
                 $stmt = $conn->prepare("DELETE FROM slider WHERE sid = ?");
                 $stmt->bind_param("i", $sid);
-
                 if ($stmt->execute()) {
-                    // Optional: Delete the image file
-                    if (!empty($image_path) && file_exists($image_path)) {
-                        unlink($image_path);
+                    $message = "Slider deleted successfully."; $message_type = 'success';
+                    if (!empty($image_path_to_delete) && file_exists($image_path_to_delete)) {
+                        @unlink($image_path_to_delete);
                     }
-                    $message = "Record deleted successfully";
                 } else {
-                    $message = "Error deleting record: " . $stmt->error;
+                    $message = "Error deleting slider: " . $stmt->error; $message_type = 'error';
                 }
                 $stmt->close();
             } else {
-                $message = "Error: Slider ID not provided for deletion.";
+                $message = "Error: Slider ID not provided for deletion."; $message_type = 'error';
             }
             break;
 
         case 'activate':
-            $sid = $_POST['sid'] ?? '';
-             if (!empty($sid)) {
-                // Prepare and bind
-                $stmt = $conn->prepare("UPDATE slider SET status=1, updated_at=NOW() WHERE sid=?");
-                $stmt->bind_param("i", $sid);
-
-                if ($stmt->execute()) {
-                    $message = "Slider activated successfully";
-                } else {
-                    $message = "Error activating slider: " . $stmt->error;
-                }
-                $stmt->close();
-            } else {
-                 $message = "Error: Slider ID not provided for activation.";
-            }
-            break;
-
         case 'deactivate':
             $sid = $_POST['sid'] ?? '';
-             if (!empty($sid)) {
-                // Prepare and bind
-                $stmt = $conn->prepare("UPDATE slider SET status=0, updated_at=NOW() WHERE sid=?");
-                $stmt->bind_param("i", $sid);
-
+            if (!empty($sid)) {
+                $new_status = ($action === 'activate') ? 1 : 0;
+                $action_text = ($action === 'activate') ? 'activated' : 'deactivated';
+                $stmt = $conn->prepare("UPDATE slider SET status=?, updated_at=NOW() WHERE sid=?");
+                $stmt->bind_param("ii", $new_status, $sid); // sid is integer
                 if ($stmt->execute()) {
-                    $message = "Slider deactivated successfully";
+                    $message = "Slider " . $action_text . " successfully."; $message_type = 'success';
                 } else {
-                    $message = "Error deactivating slider: " . $stmt->error;
+                    $message = "Error " . $action_text . " slider: " . $stmt->error; $message_type = 'error';
                 }
                 $stmt->close();
             } else {
-                 $message = "Error: Slider ID not provided for deactivation.";
+                $message = "Error: Slider ID not provided for status change."; $message_type = 'error';
             }
             break;
-
         default:
-            // No action or invalid action - do nothing
             break;
     }
-    // No redirection needed as we are on the same page
 }
-
-// --- HTML Structure with Embedded CSS and JavaScript ---
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slider Management</title>
     <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+            --border-radius: 0.3rem;
+            --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
         body {
-            font-family: sans-serif;
+            font-family: var(--font-family);
             line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            margin-top: 50;
+            background-color: #eef2f7;
+            color: var(--dark-color);
+            display: flex; 
         }
+        .page-container { /* Changed from .container to match first example's structure */
+            margin-left: 300px;
+    margin-right:100px; /* Same as sidebar width */
+    padding: 20px;
+    width: 1000px;
+    height:100%; /* Full width minus sidebar width */
+    box-sizing: border-box;
+    /* --- Add previous .page-container styles here --- */
+    max-width: none; /* Override previous max-width if needed */
+    margin-top: 10; /* Remove top margin if body flex handles alignment */
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border-top: 5px solid var(--primary-color);
+    position: relative; /* Needed if there were absolute elements inside */
+    flex-grow: 1; /* Allow main content to grow */
 
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
-        h2, h3 {
+        h2 { /* General h2 style from first example */
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
             text-align: center;
-            color: #333;
+            font-weight: 600;
         }
-
-        .message {
+        h3 { /* General h3 style from first example */
+            color: var(--dark-color);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .message-area { /* Message style from first example */
+            padding: 12px 18px;
+            margin-bottom: 25px;
+            border-radius: var(--border-radius);
+            border: 1px solid transparent;
+            font-size: 0.95rem;
             text-align: center;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
         }
-
-        .message.success {
+        .message-area.success {
             background-color: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border-color: #c3e6cb;
         }
-
-        .message.error {
+        .message-area.error {
             background-color: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border-color: #f5c6cb;
         }
-
-
-        .form-container {
+        .form-section { /* Form container style from first example */
             margin-bottom: 30px;
-            padding: 20px;
-            background-color: #e9e9e9;
-            border-radius: 5px;
+            padding: 25px;
+            background-color: var(--light-color);
+            border-radius: var(--border-radius);
+            border: 1px solid #ddd;
         }
-
-        .form-container label {
+        .form-section label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
         }
-
-        .form-container input[type="text"],
-        .form-container textarea,
-        .form-container input[type="file"] {
-            width: calc(100% - 22px); /* Adjust for padding and border */
-            padding: 10px;
+        .form-section input[type=text],
+        .form-section input[type=file],
+        .form-section textarea {
+            width: 100%;
+            padding: 12px;
             margin-bottom: 15px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: var(--border-radius);
+            box-sizing: border-box;
+            font-size: 1rem;
         }
-
-        .form-container button {
-            background-color: #5cb85c;
+        .form-section input[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .tox-tinymce {
+            border: 1px solid #ccc !important;
+            border-radius: var(--border-radius) !important;
+        }
+        .form-section .image-preview {
+            margin-top: 10px;
+            max-width: 150px; /* Consistent preview size */
+            max-height: 100px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            background: #fff;
+            border-radius: var(--border-radius);
+        }
+        .form-section .button-group {
+            margin-top: 15px;
+        }
+        .form-section button {
+            background-color: var(--primary-color);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 25px;
             border: none;
-            border-radius: 4px;
+            border-radius: var(--border-radius);
             cursor: pointer;
-            font-size: 16px;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
             margin-right: 10px;
         }
-
-        .form-container button:hover {
-            background-color: #4cae4c;
+        .form-section button:hover {
+            background-color: #0056b3;
+        }
+        .form-section button#cancelEdit {
+            background-color: var(--secondary-color);
+        }
+        .form-section button#cancelEdit:hover {
+            background-color: #5a6268;
         }
 
-        #cancelEdit {
-            background-color: #d9534f;
+        /* Table Styling from first example - adapted */
+        .data-list-section { 
+            margin-top: 30px;
+            overflow-x: auto;
         }
-
-        #cancelEdit:hover {
-            background-color: #c9302c;
-        }
-
-
-        .slider-list table {
+        .styled-data-table { /* New class for the slider table */
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
         }
-
-        .slider-list th, .slider-list td {
-            border: 1px solid #ddd;
-            width:200px;
-            padding: 8px;
+        .styled-data-table th, .styled-data-table td {
+            border: 1px solid #e0e0e0;
+            padding: 12px 15px;
             text-align: left;
+            vertical-align: middle;
         }
-
-        .slider-list th {
-            background-color: #f2f2f2;
+        .styled-data-table th {
+            background-color: #f2f5f8;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
         }
-
-        .slider-list tr:nth-child(even) {
-            background-color: #f9f9f9;
+        .styled-data-table tbody tr:nth-child(even) {
+            background-color: var(--light-color);
         }
-
-        .slider-list img {
+        .styled-data-table tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        .styled-data-table img.thumbnail { /* Class for image in table */
             display: block;
-            max-width: 50px;
+            max-width: 80px; 
             height: auto;
+            border-radius: var(--border-radius);
+            border: 1px solid #ddd;
         }
-
-        .slider-list button {
-            padding: 5px 10px;
-            margin-right: 5px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
+        .styled-data-table .actions-cell {
+            white-space: nowrap;
+            min-width: 240px; 
         }
-
-        .slider-list button.edit-btn {
-            background-color: #f0ad4e;
-            color: white;
-        }
-
-        .slider-list button.edit-btn:hover {
-            background-color: #ec971f;
-        }
-
-        .slider-list form {
+        .styled-data-table .actions-cell form {
             display: inline-block;
+            margin-right: 5px;
+            margin-bottom: 5px;
         }
-
-        .slider-list form button[type="submit"] {
-            background-color: #d9534f;
+        .styled-data-table .actions-cell button,
+        .styled-data-table .actions-cell .edit-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.85rem;
             color: white;
+            transition: background-color 0.2s ease;
+        }
+        .styled-data-table .actions-cell .edit-btn {
+            background-color: var(--warning-color);
+            color: #333;
+        }
+        .styled-data-table .actions-cell .edit-btn:hover {
+            background-color: #e0a800;
+        }
+        .styled-data-table .actions-cell button[value='delete'], /* More specific for delete button if it's a submit */
+        .styled-data-table .actions-cell form button[type="submit"] { /* General submit buttons in actions */
+            background-color: var(--danger-color);
+        }
+        .styled-data-table .actions-cell button[value='delete']:hover,
+        .styled-data-table .actions-cell form button[type="submit"]:hover {
+             background-color: #c82333;
         }
 
-        .slider-list form button[type="submit"]:hover {
-            background-color: #c9302c;
+        .styled-data-table .actions-cell button[value='activate'],
+        .styled-data-table .actions-cell form button[type="submit"][data-action-type='activate'] { /* For specific activate button */
+            background-color: var(--success-color);
         }
-
-        .slider-list form button[type="submit"]:not([name="action"][value="delete"]) {
-             background-color: #0275d8;
-             color: white;
+        .styled-data-table .actions-cell button[value='activate']:hover,
+        .styled-data-table .actions-cell form button[type="submit"][data-action-type='activate']:hover {
+            background-color: #218838;
         }
-
-        .slider-list form button[type="submit"]:not([name="action"][value="delete"]):hover {
-             background-color: #025aa5;
+        .styled-data-table .actions-cell button[value='deactivate'],
+        .styled-data-table .actions-cell form button[type="submit"][data-action-type='deactivate'] { /* For specific deactivate button */
+            background-color: var(--secondary-color);
+        }
+        .styled-data-table .actions-cell button[value='deactivate']:hover,
+        .styled-data-table .actions-cell form button[type="submit"][data-action-type='deactivate']:hover {
+            background-color: #5a6268;
+        }
+        .status-active {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: var(--secondary-color); /* Was --danger-color, changed to secondary for inactive */
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="page-container">
         <h2>Slider Management</h2>
 
         <?php if (!empty($message)): ?>
-            <div class="message <?php echo (strpos($message, 'Error') !== false || strpos($message, 'Sorry') !== false) ? 'error' : 'success'; ?>">
-                <?php echo $message; ?>
+            <div class="message-area <?php echo htmlspecialchars($message_type); ?>">
+                <?php echo htmlspecialchars($message); ?>
             </div>
         <?php endif; ?>
 
-        <div class="form-container">
-            <h3>Add New Slider</h3>
+        <div class="form-section">
+            <h3 id="formTitle">Add New Slider</h3>
             <form id="sliderForm" action="" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="action" value="insert">
                 <input type="hidden" name="sid" id="sid" value="">
@@ -413,29 +454,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <input type="text" id="stitle" name="stitle" required>
 
                 <label for="stext">Text:</label>
-                <textarea id="stext" name="stext" ></textarea>
+                <textarea id="stext" name="stext"></textarea>
 
                 <label for="simg">Image:</label>
                 <input type="file" id="simg" name="simg" accept="image/*">
                 <input type="hidden" name="existing_simg" id="existing_simg" value="">
-                <img id="current_simg_preview" src="" alt="Current Image" style="max-width: 100px; display: none;">
+                <img id="current_simg_preview" src="#" alt="Current Slider Image" style="display: none;" class="image-preview">
 
-
-                <button type="submit">Save Slider</button>
-                <button type="button" id="cancelEdit" style="display: none;">Cancel Edit</button>
+                <div class="button-group">
+                    <button type="submit" id="submitButton">Save Slider</button>
+                    <button type="button" id="cancelEdit" style="display: none;">Cancel Edit</button>
+                </div>
             </form>
         </div>
 
-        <hr>
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
-        <div class="slider-list">
+        <div class="data-list-section">
             <h3>Existing Sliders</h3>
-            <table>
+            <table class="styled-data-table">
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Title</th>
-                        <th >Text</th>
+                        <th>Text Preview</th>
                         <th>Image</th>
                         <th>Status</th>
                         <th>Created At</th>
@@ -445,55 +487,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </thead>
                 <tbody>
                     <?php
-                    $sql = "SELECT * FROM slider ORDER BY created_at DESC";
+                    $sql = "SELECT sid, stitle, stext, simg, status, created_at, updated_at FROM slider ORDER BY created_at DESC";
                     $result = $conn->query($sql);
 
-                    if ($result->num_rows > 0) {
+                    if ($result && $result->num_rows > 0) {
                         while($row = $result->fetch_assoc()) {
                             echo "<tr>";
                             echo "<td>" . $row["sid"] . "</td>";
                             echo "<td>" . htmlspecialchars($row["stitle"]) . "</td>";
-                            echo "<td>" . htmlspecialchars($row["stext"]) . "</td>";
+                            echo "<td>" . htmlspecialchars(mb_substr(strip_tags($row["stext"]), 0, 50)) . (mb_strlen(strip_tags($row["stext"])) > 50 ? '...' : '') . "</td>";
                             echo "<td>";
-                            if (!empty($row["simg"])) {
-                                echo "<img src='" . htmlspecialchars($row["simg"]) . "' alt='Slider Image' width='50'>";
+                            if (!empty($row["simg"]) && file_exists($row["simg"])) {
+                                echo "<img src='" . htmlspecialchars($row["simg"]) . "' alt='Slider Image' class='thumbnail'>";
                             } else {
-                                echo "No Image";
+                                echo "<span>No Image</span>";
                             }
                             echo "</td>";
-                            echo "<td>" . ($row["status"] == 1 ? "Active" : "Inactive") . "</td>";
-                            echo "<td>" . $row["created_at"] . "</td>";
-                            echo "<td>" . $row["updated_at"] . "</td>";
-                            echo "<td>";
-                            // Edit Button
-                            echo "<button class='edit-btn' data-sid='" . $row["sid"] . "' data-stitle='" . htmlspecialchars($row["stitle"]) . "' data-stext='" . htmlspecialchars($row["stext"]) . "' data-simg='" . htmlspecialchars($row["simg"]) . "' data-status='" . $row["status"] . "'>Edit</button>";
+                            echo "<td><span class='status-" . ($row["status"] == 1 ? "active" : "inactive") . "'>" . ($row["status"] == 1 ? "Active" : "Inactive") . "</span></td>";
+                            echo "<td>" . date("Y-m-d", strtotime($row["created_at"])) . "</td>";
+                            echo "<td>" . date("Y-m-d", strtotime($row["updated_at"])) . "</td>";
+                            echo "<td class='actions-cell'>";
+                            
+                            echo "<button class='edit-btn' 
+                                    data-sid='" . $row["sid"] . "' 
+                                    data-stitle='" . htmlspecialchars($row["stitle"]) . "' 
+                                    data-stext='" . htmlspecialchars($row["stext"]) . "' 
+                                    data-simg='" . htmlspecialchars($row["simg"]) . "'>Edit</button>";
 
-                            // Delete Form
-                            echo "<form action='' method='POST' style='display:inline-block;' onsubmit='return confirm(\"Are you sure you want to delete this slider?\");'>";
+                            echo "<form action='' method='POST' onsubmit='return confirm(\"Are you sure you want to delete this slider?\");'>";
                             echo "<input type='hidden' name='action' value='delete'>";
                             echo "<input type='hidden' name='sid' value='" . $row["sid"] . "'>";
-                            echo "<button type='submit'>Delete</button>";
+                            echo "<button type='submit' value='delete'>Delete</button>";
                             echo "</form>";
 
-                            // Activate/Deactivate Forms
                             if ($row["status"] == 1) {
-                                echo "<form action='' method='POST' style='display:inline-block;'>";
+                                echo "<form action='' method='POST'>";
                                 echo "<input type='hidden' name='action' value='deactivate'>";
                                 echo "<input type='hidden' name='sid' value='" . $row["sid"] . "'>";
-                                echo "<button type='submit'>Deactivate</button>";
+                                echo "<button type='submit' value='deactivate' data-action-type='deactivate'>Deactivate</button>";
                                 echo "</form>";
                             } else {
-                                echo "<form action='' method='POST' style='display:inline-block;'>";
+                                echo "<form action='' method='POST'>";
                                 echo "<input type='hidden' name='action' value='activate'>";
                                 echo "<input type='hidden' name='sid' value='" . $row["sid"] . "'>";
-                                echo "<button type='submit'>Activate</button>";
+                                echo "<button type='submit' value='activate' data-action-type='activate'>Activate</button>";
                                 echo "</form>";
                             }
                             echo "</td>";
                             echo "</tr>";
                         }
                     } else {
-                        echo "<tr><td colspan='8'>No sliders found</td></tr>";
+                        echo "<tr><td colspan='8' style='text-align: center; padding: 20px;'>No sliders found.</td></tr>";
                     }
                     ?>
                 </tbody>
@@ -501,21 +545,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-
-    <!-- Place the first <script> tag in your HTML's <head> -->
 <script src="https://cdn.tiny.cloud/1/9tftpew6nchs467m3z4d2v9e5xmvvvl8bis1m0g7iqt8w7bs/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
-
-<!-- Place the following <script> and <textarea> tags your HTML's <body> -->
 <script>
   tinymce.init({
-    selector: 'textarea',
-    plugins: [
-      // Core editing features
-      'anchor', 'autolink', 'charmap', 'codesample', 'emoticons', 'image', 'link', 'lists', 'media', 'searchreplace', 'table', 'visualblocks', 'wordcount',
-      // Your account includes a free trial of TinyMCE premium features
-      // Try the most popular premium features until May 20, 2025:
-      'checklist', 'mediaembed', 'casechange', 'formatpainter', 'pageembed', 'a11ychecker', 'tinymcespellchecker', 'permanentpen', 'powerpaste', 'advtable', 'advcode', 'editimage', 'advtemplate', 'ai', 'mentions', 'tinycomments', 'tableofcontents', 'footnotes', 'mergetags', 'autocorrect', 'typography', 'inlinecss', 'markdown','importword', 'exportword', 'exportpdf'
-    ],
+    selector: '#stext', // Target the specific textarea by ID
+    plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount checklist mediaembed casechange formatpainter pageembed a11ychecker tinymcespellchecker permanentpen powerpaste advtable advcode editimage advtemplate ai mentions tinycomments tableofcontents footnotes mergetags autocorrect typography inlinecss markdown importword exportword exportpdf',
     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table mergetags | addcomment showcomments | spellcheckdialog a11ycheck typography | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
     tinycomments_mode: 'embedded',
     tinycomments_author: 'Author name',
@@ -527,152 +561,107 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   });
 </script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sliderForm = document.getElementById('sliderForm');
-            const actionInput = document.getElementById('action');
-            const sidInput = document.getElementById('sid');
-            const stitleInput = document.getElementById('stitle');
-            const stextInput = document.getElementById('stext');
-            const simgInput = document.getElementById('simg');
-            const existingSimgInput = document.getElementById('existing_simg');
-            const currentSimgPreview = document.getElementById('current_simg_preview');
-            const formTitle = document.querySelector('.form-container h3');
-            const submitButton = sliderForm.querySelector('button[type="submit"]');
-            const cancelButton = document.getElementById('cancelEdit');
-
-            document.querySelectorAll('.edit-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const sid = this.getAttribute('data-sid');
-                    const stitle = this.getAttribute('data-stitle');
-                    const stext = this.getAttribute('data-stext');
-                    const simg = this.getAttribute('data-simg');
-                    // const status = this.getAttribute('data-status'); // Status not needed for editing form fields
-
-                    // Populate the form
-                    formTitle.textContent = 'Edit Slider';
-                    actionInput.value = 'update';
-                    sidInput.value = sid;
-                    stitleInput.value = stitle;
-                    stextInput.value = stext;
-                    existingSimgInput.value = simg; // Store existing image path
-
-                    // Display current image preview
-                    if (simg && simg !== 'No Image') { // Check if simg is not empty and not the default text
-                        currentSimgPreview.src = simg;
-                        currentSimgPreview.style.display = 'block';
-                    } else {
-                        currentSimgPreview.src = '';
-                        currentSimgPreview.style.display = 'none';
-                    }
-
-                    submitButton.textContent = 'Update Slider';
-                    cancelButton.style.display = 'inline-block'; // Show cancel button
-
-                    // Scroll to the form
-                    sliderForm.scrollIntoView({ behavior: 'smooth' });
-                });
-            });
-
-            cancelButton.addEventListener('click', function() {
-                // Reset the form to add mode
-                formTitle.textContent = 'Add New Slider';
-                actionInput.value = 'insert';
-                sidInput.value = '';
-                stitleInput.value = '';
-                stextInput.value = '';
-                simgInput.value = ''; // Clear the file input
-                existingSimgInput.value = '';
-                currentSimgPreview.src = '';
-                currentSimgPreview.style.display = 'none';
-                submitButton.textContent = 'Save Slider';
-                cancelButton.style.display = 'none'; // Hide cancel button
-            });
-        });
-    </script>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sliderForm = document.getElementById('sliderForm');
         const actionInput = document.getElementById('action');
-        const sidInput = document.getElementById('sid');
+        const sidInput = document.getElementById('sid'); // Slider ID input
         const stitleInput = document.getElementById('stitle');
-        const stextInput = document.getElementById('stext'); // The original textarea
+        const stextTextarea = document.getElementById('stext'); // The textarea for TinyMCE
         const simgInput = document.getElementById('simg');
         const existingSimgInput = document.getElementById('existing_simg');
         const currentSimgPreview = document.getElementById('current_simg_preview');
-        const formTitle = document.querySelector('.form-container h3');
-        const submitButton = sliderForm.querySelector('button[type=submit]');
+        const formTitle = document.getElementById('formTitle');
+        const submitButton = document.getElementById('submitButton');
         const cancelButton = document.getElementById('cancelEdit');
 
         document.querySelectorAll('.edit-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const sid = this.getAttribute('data-sid');
                 const stitle = this.getAttribute('data-stitle');
-                const stext = this.getAttribute('data-stext'); // Get text data
+                const stextData = this.getAttribute('data-stext'); // Renamed to avoid conflict with stextTextarea
                 const simg = this.getAttribute('data-simg');
 
-                // Populate the form
                 formTitle.textContent = 'Edit Slider';
                 actionInput.value = 'update';
-                sidInput.value = sid;
+                sidInput.value = sid; 
                 stitleInput.value = stitle;
-                existingSimgInput.value = simg; // Store existing image path
+                existingSimgInput.value = simg;
 
-                // *** FIX: Use TinyMCE API to set content ***
-                if (tinymce.get('stext')) { // Check if the editor instance exists
-                    tinymce.get('stext').setContent(stext || ''); // Set content, default to empty string if null/undefined
+                // Set content for TinyMCE
+                if (typeof tinymce !== 'undefined' && tinymce.get('stext')) {
+                    tinymce.get('stext').setContent(stextData || '');
                 } else {
-                    // Fallback if TinyMCE isn't ready (should ideally not happen with DOMContentLoaded)
-                    stextInput.value = stext;
-                    console.error("TinyMCE editor 'stext' not found when trying to set content.");
+                    stextTextarea.value = stextData; // Fallback if TinyMCE not ready
                 }
-                // *** End FIX ***
 
-                // Display current image preview
-                if (simg && simg !== 'No Image') {
+                if (simg && simg !== '') {
                     currentSimgPreview.src = simg;
                     currentSimgPreview.style.display = 'block';
                 } else {
-                    currentSimgPreview.src = '';
+                    currentSimgPreview.src = '#';
                     currentSimgPreview.style.display = 'none';
                 }
 
                 submitButton.textContent = 'Update Slider';
-                cancelButton.style.display = 'inline-block'; // Show cancel button
-
-                // Scroll to the form
-                sliderForm.scrollIntoView({ behavior: 'smooth' });
+                cancelButton.style.display = 'inline-block';
+                sliderForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
 
         cancelButton.addEventListener('click', function() {
-            // Reset the form to add mode
+            resetForm();
+        });
+
+        function resetForm() {
             formTitle.textContent = 'Add New Slider';
             actionInput.value = 'insert';
-            sidInput.value = '';
+            sidInput.value = ''; 
             stitleInput.value = '';
-            simgInput.value = ''; // Clear the file input
+            simgInput.value = ''; 
             existingSimgInput.value = '';
-            currentSimgPreview.src = '';
+            currentSimgPreview.src = '#';
             currentSimgPreview.style.display = 'none';
-            submitButton.textContent = 'Save Slider';
-            cancelButton.style.display = 'none'; // Hide cancel button
 
-            // *** FIX: Use TinyMCE API to clear content ***
-            if (tinymce.get('stext')) {
+            // Clear content for TinyMCE
+            if (typeof tinymce !== 'undefined' && tinymce.get('stext')) {
                 tinymce.get('stext').setContent('');
             } else {
-                 stextInput.value = ''; // Fallback
-                 console.error("TinyMCE editor 'stext' not found when trying to clear content.");
+                stextTextarea.value = ''; // Fallback
             }
-             // *** End FIX ***
+
+            submitButton.textContent = 'Save Slider';
+            cancelButton.style.display = 'none';
+        }
+
+        simgInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentSimgPreview.src = e.target.result;
+                    currentSimgPreview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                // If no new file is selected during an update, show existing image
+                const existingImg = existingSimgInput.value;
+                if (actionInput.value === 'update' && existingImg && existingImg !== '') {
+                    currentSimgPreview.src = existingImg;
+                    currentSimgPreview.style.display = 'block';
+                } else {
+                    currentSimgPreview.src = '#';
+                    currentSimgPreview.style.display = 'none';
+                }
+            }
         });
     });
 </script>
+
 </body>
 </html>
 <?php
-// Close the database connection at the end
-$conn->close();
+if (isset($conn) && $conn instanceof mysqli) {
+    $conn->close();
+}
 ?>
