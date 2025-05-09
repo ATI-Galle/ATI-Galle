@@ -301,7 +301,7 @@
                 </a>
                 <ul class="sub-menu" id="eventsMenu">
                     <li class="nav-item">
-                        <a class="nav-link" href="evnts.php">
+                        <a class="nav-link" href="evnt.php">
                             <span class="menu-title">Manage Events</span>
                         </a>
                     </li>
