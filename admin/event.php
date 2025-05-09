@@ -1,4 +1,9 @@
 <?php
+// It's good practice to start sessions or include global settings here if not in header.php
+// session_start();
+// error_reporting(E_ALL); // Recommended for development
+// ini_set('display_errors', 1); // Recommended for development
+
 include('include/header.php'); // Assuming your header.php sets up necessary things
 ?>
 
@@ -101,16 +106,18 @@ h3 {
     background-color: #e9ecef;
     cursor: not-allowed;
 }
+/* Ensure TinyMCE editor respects border radius and standard border */
 .tox-tinymce {
     border: 1px solid #ccc !important;
     border-radius: var(--border-radius) !important;
 }
 .form-section input[type="file"] {
-    padding: 8px;
-    background-color: #fff;
+    padding: 8px; /* Adjusted padding for file input */
+    background-color: #fff; /* Ensure file input background is white */
 }
 .form-section .image-preview-container {
     margin-top: 10px;
+    margin-bottom: 15px; /* Added margin for spacing */
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -126,11 +133,12 @@ h3 {
     border-radius: var(--border-radius);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.form-section .image-preview { /* This is the <img> tag itself */
+.form-section .image-preview-item img { /* Target img tag directly */
     max-width: 100px;
     max-height: 100px;
     display: block; /* remove extra space below image */
     object-fit: cover;
+    border-radius: calc(var(--border-radius) - 2px); /* Slightly smaller radius than container */
 }
 .form-section .delete-existing-image-btn {
     position: absolute;
@@ -151,6 +159,13 @@ h3 {
 }
 .form-section .delete-existing-image-btn:hover {
     background-color: #c82333; /* Darker red on hover */
+}
+.form-section .delete-existing-image-btn:disabled {
+    background-color: var(--secondary-color);
+    cursor: not-allowed;
+}
+.form-section .image-preview-item.marked-for-deletion img {
+    opacity: 0.5;
 }
 
 
@@ -210,7 +225,7 @@ h3 {
 .event-table .actions-cell { white-space: nowrap; min-width: 240px; }
 .event-table .actions-cell form { display: inline-block; margin-right: 5px; margin-bottom: 5px; }
 .event-table .actions-cell button,
-.event-table .actions-cell .edit-btn {
+.event-table .actions-cell .edit-btn { /* Applied common styles to edit-btn too */
     padding: 6px 12px;
     border: none;
     border-radius: var(--border-radius);
@@ -218,6 +233,8 @@ h3 {
     font-size: 0.85rem;
     color: white;
     transition: background-color 0.2s ease;
+    text-decoration: none; /* For edit button if it's an <a> styled as button */
+    display: inline-block; /* For consistent spacing */
 }
 .event-table .actions-cell .edit-btn { background-color: var(--warning-color); color: #333; }
 .event-table .actions-cell .edit-btn:hover { background-color: #e0a800; }
@@ -236,23 +253,25 @@ h3 {
 <div class="page-container">
 <?php
 // --- Database Connection ---
-include ('include/config.php'); // Your database connection file
+include ('include/config.php'); // Your database connection file, defines $conn
 
 if (isset($conn) && $conn instanceof mysqli) {
     $conn->set_charset("utf8mb4");
 } else {
-    error_log("Database connection (\$conn) not properly initialized in config.php");
-    // exit("Database connection error."); // Optionally stop execution
+    // Critical error if $conn is not set by config.php
+    echo "<div class='message-area error'>Database connection error. Please check config.php.</div>";
+    // You might want to exit or stop further script execution here
+    // exit;
 }
 
 $message = '';
-$message_type = '';
-$upload_base_dir = "uploads/albums/"; // Make sure this directory is writable by the server
+$message_type = ''; // 'success', 'error', 'warning'
+$upload_base_dir = "uploads/albums/"; // Make sure this directory exists and is writable
 
 // Function to recursively delete a directory
 function deleteDir($dirPath) {
     if (!is_dir($dirPath)) {
-        return; // Not a directory, so nothing to do
+        return;
     }
     if (substr($dirPath, strlen($dirPath) - 1, 1) != '/') {
         $dirPath .= '/';
@@ -262,37 +281,40 @@ function deleteDir($dirPath) {
         if (is_dir($file)) {
             deleteDir($file); // Recursively delete subdirectories
         } else {
-            @unlink($file); // Delete files
+            @unlink($file); // Delete files, suppress errors if any
         }
     }
-    @rmdir($dirPath); // Delete the now-empty directory
+    @rmdir($dirPath); // Delete the now-empty directory, suppress errors
 }
 
 
+// --- Form Submission Handling ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
     $action = $_POST['action'] ?? '';
-    $eid_param = $_POST['eid'] ?? null; // Renamed to avoid conflict with $eid variable inside loops/functions
+    $eid_param = $_POST['eid'] ?? null;
     $etitle = $_POST['etitle'] ?? '';
-    $etag = $_POST['etag'] ?? ''; // SEO Tags
+    $etag = $_POST['etag'] ?? '';
     $etext = $_POST['etext'] ?? '';
     
     $client_provided_existing_album_id = $_POST['existing_album_id'] ?? null;
-    $currentAlbumId = null; 
+    $currentAlbumId = null; // This will hold the AlbumId to be associated with the event
 
     if ($action === 'update' && !empty($client_provided_existing_album_id)) {
         $currentAlbumId = $client_provided_existing_album_id;
     }
 
-    $new_images_uploaded = false; 
+    $new_images_uploaded = false;
 
     try {
-        $conn->begin_transaction(); // Start transaction for operations involving multiple queries
+        $conn->begin_transaction();
 
+        // --- INSERT or UPDATE Event ---
         if ($action === 'insert' || $action === 'update') {
-            if (empty($eid_param) && $action === 'insert') {
-                throw new Exception("Event ID cannot be empty for new event.");
-            } elseif (empty($etitle)) {
+            if (empty($etitle)) { // EID uniqueness checked before insert
                 throw new Exception("Event Title cannot be empty.");
+            }
+            if ($action === 'insert' && empty($eid_param)) {
+                 throw new Exception("Event ID cannot be empty for new event.");
             }
 
             // 1. Handle Deletion of Existing Images (Only for Update action)
@@ -301,20 +323,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                 if (!empty($images_to_delete)) {
                     $stmt_delete_single_img_record = $conn->prepare("DELETE FROM album_images WHERE AlbumId = ? AND image_path = ?");
                     foreach ($images_to_delete as $imgPathToDelete) {
-                        // Sanitize or validate imgPathToDelete if necessary
-                        $fullPathToDelete = $imgPathToDelete; 
+                        // Validate or sanitize imgPathToDelete if it's coming directly from user input beyond just the value.
+                        // Assuming $imgPathToDelete is the exact path stored in DB.
+                        $fullPathToDelete = $imgPathToDelete; // In your setup, this IS the full path.
 
                         $stmt_delete_single_img_record->bind_param("ss", $currentAlbumId, $fullPathToDelete);
                         if ($stmt_delete_single_img_record->execute()) {
                             if (file_exists($fullPathToDelete)) {
                                 if (!@unlink($fullPathToDelete)) {
                                     error_log("Failed to delete physical image file: " . $fullPathToDelete);
+                                    // Non-critical, so perhaps just a warning
                                     $message .= " Warning: Could not delete file " . basename($fullPathToDelete) . ".";
-                                    $message_type = 'warning';
+                                    $message_type = empty($message_type) || $message_type === 'success' ? 'warning' : $message_type;
                                 }
                             }
                         } else {
                             error_log("Failed to delete image record from DB: " . $fullPathToDelete . " for AlbumId: " . $currentAlbumId . " - " . $stmt_delete_single_img_record->error);
+                            // This could be more critical, consider throwing an exception or a stronger warning.
                         }
                     }
                     $stmt_delete_single_img_record->close();
@@ -325,21 +350,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
             if (isset($_FILES['eimgs']) && !empty(array_filter($_FILES['eimgs']['name']))) {
                 $new_images_uploaded = true;
 
-                if (empty($currentAlbumId)) { 
-                    $currentAlbumId = uniqid('album_');
+                if (empty($currentAlbumId)) { // No existing album OR creating a new event that needs an album
+                    $currentAlbumId = 'album_' . uniqid(); // Generate new AlbumId
                     $album_name_for_db = !empty($etitle) ? $etitle . " Album" : "Event Album (" . $currentAlbumId . ")";
-                    $stmt_album = $conn->prepare("INSERT INTO album (AlbumId, album_name, created_at) VALUES (?, ?, NOW())");
+                    
+                    $stmt_album = $conn->prepare("INSERT INTO albums (AlbumId, album_name, created_at) VALUES (?, ?, NOW())");
                     $stmt_album->bind_param("ss", $currentAlbumId, $album_name_for_db);
                     if (!$stmt_album->execute()) {
                         throw new Exception("Error creating album record: " . $stmt_album->error);
                     }
                     $stmt_album->close();
                 } elseif ($action === 'update' && !empty($currentAlbumId)) {
-                    // Optionally update album_name if title changed
+                    // Album exists, optionally update its name if the event title changed
                     $album_name_for_db = !empty($etitle) ? $etitle . " Album" : "Event Album (" . $currentAlbumId . ")";
-                    $stmt_update_album_name = $conn->prepare("UPDATE album SET album_name = ? WHERE AlbumId = ?");
+                    $stmt_update_album_name = $conn->prepare("UPDATE albums SET album_name = ? WHERE AlbumId = ?");
                     $stmt_update_album_name->bind_param("ss", $album_name_for_db, $currentAlbumId);
-                    $stmt_update_album_name->execute();
+                    $stmt_update_album_name->execute(); // Best effort, failure might not be critical
                     $stmt_update_album_name->close();
                 }
                 
@@ -354,19 +380,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                 foreach ($_FILES['eimgs']['name'] as $key => $name) {
                     if ($_FILES['eimgs']['error'][$key] === UPLOAD_ERR_OK) {
                         $tmp_name = $_FILES['eimgs']['tmp_name'][$key];
+                        // Sanitize filename
                         $image_file_name = preg_replace("/[^a-zA-Z0-9\.\_\-]/", "_", basename($name));
+                        // Create a unique filename to prevent overwrites and conflicts
                         $target_file_name = time() . "_" . uniqid() . "_" . $image_file_name;
-                        $target_file = $album_specific_dir . $target_file_name;
-                        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+                        $target_file_path = $album_specific_dir . $target_file_name;
+                        $imageFileType = strtolower(pathinfo($target_file_path, PATHINFO_EXTENSION));
 
+                        // Validations
                         $check = getimagesize($tmp_name);
                         if($check === false) { throw new Exception("File '$name' is not a valid image."); }
-                        if ($_FILES["eimgs"]["size"][$key] > 5000000) { throw new Exception("Sorry, image '$name' is too large (Max 5MB)."); }
+                        if ($_FILES["eimgs"]["size"][$key] > 5000000) { // 5MB limit
+                            throw new Exception("Sorry, image '$name' is too large (Max 5MB).");
+                        }
                         $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                        if(!in_array($imageFileType, $allowed_types)) { throw new Exception("Sorry, only JPG, JPEG, PNG, GIF, WEBP allowed for '$name'. Was: $imageFileType"); }
+                        if(!in_array($imageFileType, $allowed_types)) {
+                            throw new Exception("Sorry, only JPG, JPEG, PNG, GIF, WEBP allowed for '$name'. Type was: '$imageFileType'");
+                        }
 
-                        if (move_uploaded_file($tmp_name, $target_file)) {
-                            $image_paths_for_db[] = $target_file; 
+                        if (move_uploaded_file($tmp_name, $target_file_path)) {
+                            $image_paths_for_db[] = $target_file_path; // Store the relative path from web root
                         } else {
                             throw new Exception("Error uploading image '$name'. Check permissions for " . $album_specific_dir);
                         }
@@ -380,13 +413,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                     foreach ($image_paths_for_db as $path) {
                         $stmt_img_insert->bind_param("ss", $currentAlbumId, $path);
                         if(!$stmt_img_insert->execute()){
-                            error_log("Error inserting image path $path: " . $stmt_img_insert->error);
-                            // Decide if this should throw an exception or just be a warning
+                            // Log error, decide if this should be a transaction-failing exception
+                            error_log("Error inserting image path $path into album_images: " . $stmt_img_insert->error);
                         }
                     }
                     $stmt_img_insert->close();
                 }
-            } 
+            }
 
             // 3. Optional: Cleanup empty album (if all images removed and no new ones added during an update)
             if ($action === 'update' && !empty($client_provided_existing_album_id) && !$new_images_uploaded) {
@@ -398,33 +431,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                 $stmt_count_remaining->close();
 
                 if ($remaining_images_count === 0) {
+                    // Album is empty, delete it from 'albums' table.
+                    // The ON DELETE CASCADE on 'album_images.AlbumId' referencing 'albums.AlbumId'
+                    // should handle deleting rows from 'album_images', but physical files need manual deletion.
+                    
                     $album_dir_to_delete = $upload_base_dir . $client_provided_existing_album_id . "/";
-                    deleteDir($album_dir_to_delete); 
+                    deleteDir($album_dir_to_delete); // Delete physical directory
 
-                    // Delete from album table. If ON DELETE CASCADE is set up for album_images.AlbumId -> album.AlbumId,
-                    // corresponding album_images records will be deleted automatically by the DB.
-                    $stmt_del_alb = $conn->prepare("DELETE FROM album WHERE AlbumId = ?");
+                    $stmt_del_alb = $conn->prepare("DELETE FROM albums WHERE AlbumId = ?");
                     $stmt_del_alb->bind_param("s", $client_provided_existing_album_id);
                     $stmt_del_alb->execute();
                     $stmt_del_alb->close();
                     
-                    // If ON DELETE CASCADE is NOT set up, you'd need this:
-                    // $stmt_del_album_images = $conn->prepare("DELETE FROM album_images WHERE AlbumId = ?");
-                    // $stmt_del_album_images->bind_param("s", $client_provided_existing_album_id);
-                    // $stmt_del_album_images->execute();
-                    // $stmt_del_album_images->close();
-                    
+                    // Since album is deleted, the event should no longer link to it.
+                    // This is important if currentAlbumId was pointing to client_provided_existing_album_id
                     if ($currentAlbumId === $client_provided_existing_album_id) {
-                         $currentAlbumId = null; // Album is gone, so event should no longer link to it
+                       $currentAlbumId = null;
                     }
                     $message .= ($message ? " " : "") . "Album (ID: " . htmlspecialchars($client_provided_existing_album_id) . ") was emptied and removed.";
-                    if(empty($message_type) || $message_type == 'success') $message_type = 'success';
+                    $message_type = (empty($message_type) || $message_type == 'success') ? 'success' : $message_type; // Keep warning if already set
                 }
             }
             
             // --- Database Operations for Event (Insert/Update) ---
             if ($action === 'insert') {
-                $check_stmt = $conn->prepare("SELECT eid FROM event WHERE eid = ?");
+                $check_stmt = $conn->prepare("SELECT eid FROM events WHERE eid = ?");
                 $check_stmt->bind_param("s", $eid_param);
                 $check_stmt->execute();
                 $check_stmt->store_result();
@@ -432,8 +463,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                 if ($check_stmt->num_rows > 0) {
                     throw new Exception("Event ID '$eid_param' already exists. Please use a different ID.");
                 } else {
-                    $status = 1; 
-                    $stmt = $conn->prepare("INSERT INTO event (eid, etitle, etag, etext, AlbumId, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
+                    $status = 1; // Default status for new event is Active
+                    $stmt = $conn->prepare("INSERT INTO events (eid, etitle, etag, etext, AlbumId, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
+                    // Note: $currentAlbumId might be null if no images were uploaded and no existing album was relevant.
                     $stmt->bind_param("sssssi", $eid_param, $etitle, $etag, $etext, $currentAlbumId, $status);
                     if ($stmt->execute()) {
                         $message = "New event created successfully." . ($message ? " " . $message : "");
@@ -445,7 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                 }
                 $check_stmt->close();
             } elseif ($action === 'update') {
-                $stmt = $conn->prepare("UPDATE event SET etitle=?, etag=?, etext=?, AlbumId=?, updated_at=NOW() WHERE eid=?");
+                $stmt = $conn->prepare("UPDATE events SET etitle=?, etag=?, etext=?, AlbumId=?, updated_at=NOW() WHERE eid=?");
                 $stmt->bind_param("sssss", $etitle, $etag, $etext, $currentAlbumId, $eid_param);
                 if ($stmt->execute()) {
                     $message = "Event updated successfully." . ($message ? " " . $message : "");
@@ -455,123 +487,112 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                 }
                 $stmt->close();
             }
-            $conn->commit(); // Commit transaction if all successful
-
-        } elseif ($action === 'delete') {
+        }
+        // --- DELETE Event ---
+        elseif ($action === 'delete') {
             if (!empty($eid_param)) {
+                // First, get the AlbumId associated with this event to delete the album later
                 $albumIdToDelete = null;
-                $stmt_get_album = $conn->prepare("SELECT AlbumId FROM event WHERE eid = ?");
+                $stmt_get_album = $conn->prepare("SELECT AlbumId FROM events WHERE eid = ?");
                 $stmt_get_album->bind_param("s", $eid_param);
                 $stmt_get_album->execute();
                 $stmt_get_album->bind_result($albumIdToDelete);
                 $stmt_get_album->fetch();
                 $stmt_get_album->close();
 
-                // First, delete the event record.
-                $stmt_delete_event = $conn->prepare("DELETE FROM event WHERE eid = ?");
+                // Delete the event record from 'events' table
+                $stmt_delete_event = $conn->prepare("DELETE FROM events WHERE eid = ?");
                 $stmt_delete_event->bind_param("s", $eid_param);
                 
                 if ($stmt_delete_event->execute()) {
                     if ($albumIdToDelete) {
-                        // Album exists, proceed to delete its files and DB records.
+                        // Album exists, proceed to delete its files, directory, and DB records.
+                        // Physical files in the album directory
                         $album_dir_to_delete = $upload_base_dir . $albumIdToDelete . "/";
-
-                        // Fetch paths to delete physical files BEFORE deleting DB records for them
-                        $img_paths_to_delete_sql = "SELECT image_path FROM album_images WHERE AlbumId = ?";
-                        $stmt_paths = $conn->prepare($img_paths_to_delete_sql);
-                        $stmt_paths->bind_param("s", $albumIdToDelete);
-                        $stmt_paths->execute();
-                        $result_paths = $stmt_paths->get_result();
-                        while($row_path = $result_paths->fetch_assoc()){
-                            if(!empty($row_path['image_path']) && file_exists($row_path['image_path'])) {
-                                @unlink($row_path['image_path']);
-                            }
-                        }
-                        $stmt_paths->close();
                         
-                        // Recursively delete the album directory and its contents
+                        // Fetch paths from album_images to delete physical files BEFORE deleting DB records for them
+                        // This step is crucial if ON DELETE CASCADE is not cleaning up physical files.
+                        // However, deleteDir already handles files in the directory.
+                        // For good measure, ensure directory is cleaned.
                         deleteDir($album_dir_to_delete); 
 
-                        // Now, delete the main album record from the 'album' table.
-                        // If you set up `ON DELETE CASCADE` for the foreign key from `album_images.AlbumId`
-                        // to `album.AlbumId`, the database will automatically delete all related
-                        // records from the `album_images` table.
-                        $stmt_delete_album = $conn->prepare("DELETE FROM album WHERE AlbumId = ?");
+                        // Delete the main album record from the 'albums' table.
+                        // ON DELETE CASCADE on 'album_images.AlbumId' FK will handle deleting related 'album_images' records.
+                        $stmt_delete_album = $conn->prepare("DELETE FROM albums WHERE AlbumId = ?");
                         $stmt_delete_album->bind_param("s", $albumIdToDelete);
                         $stmt_delete_album->execute();
                         $stmt_delete_album->close();
-
-                        // If `ON DELETE CASCADE` is NOT set on `album_images.AlbumId` -> `album.AlbumId`,
-                        // you would need to manually delete from `album_images` first:
-                        // $stmt_delete_imgs = $conn->prepare("DELETE FROM album_images WHERE AlbumId = ?");
-                        // $stmt_delete_imgs->bind_param("s", $albumIdToDelete);
-                        // $stmt_delete_imgs->execute();
-                        // $stmt_delete_imgs->close();
                     }
-                    $conn->commit(); // Commit transaction
                     $message = "Event and associated album/images deleted successfully.";
                     $message_type = 'success';
                 } else {
-                    $conn->rollback(); // Rollback on event deletion failure
                     throw new Exception("Error deleting event: " . $stmt_delete_event->error);
                 }
                 $stmt_delete_event->close();
             } else {
                 throw new Exception("Event ID not provided for deletion.");
             }
-        } elseif ($action === 'activate' || $action === 'deactivate') {
+        } 
+        // --- ACTIVATE/DEACTIVATE Event ---
+        elseif ($action === 'activate' || $action === 'deactivate') {
              if (!empty($eid_param)) {
                 $new_status = ($action === 'activate') ? 1 : 0;
                 $action_text = ($action === 'activate') ? 'activated' : 'deactivated';
-                $stmt = $conn->prepare("UPDATE event SET status=?, updated_at=NOW() WHERE eid=?");
+                $stmt = $conn->prepare("UPDATE events SET status=?, updated_at=NOW() WHERE eid=?");
                 $stmt->bind_param("is", $new_status, $eid_param);
-                if ($stmt->execute()) { 
-                    $conn->commit(); // Commit transaction
-                    $message = "Event " . $action_text . " successfully."; $message_type = 'success'; 
+                if ($stmt->execute()) {
+                    $message = "Event " . $action_text . " successfully."; 
+                    $message_type = 'success';
+                } else { 
+                    throw new Exception("Error " . $action_text . "ing event: " . $stmt->error);
                 }
-                else { throw new Exception("Error " . $action_text . " event: " . $stmt->error); } // Will be caught, and rollback
                 $stmt->close();
-            } else { throw new Exception("Event ID not provided for status change.");} // Will be caught
-        } else {
-             // No action that requires transaction or specific handling, so commit if transaction was started (e.g. GET request)
-             if ($conn->in_transaction) { // Check if in_transaction property exists (PHP 8+) or use $conn->get_transaction_status() for older
-                $conn->commit();
-             }
+            } else { 
+                throw new Exception("Event ID not provided for status change.");
+            }
         }
 
+        $conn->commit(); // Commit transaction if all operations were successful
+
     } catch (Exception $e) {
-        if ($conn->in_transaction ?? false) { // Check if in_transaction property exists
-             $conn->rollback(); 
+        if (isset($conn) && $conn->ping() && $conn->in_transaction) { // Check if connection is alive and in transaction
+            $conn->rollback(); 
         }
         $message = "An error occurred: " . $e->getMessage();
         $message_type = 'error';
+        // Log detailed error for admin review
         error_log("Event Management Error: " . $e->getMessage() . "\nPOST data: " . print_r($_POST, true) . "\nFILES data: " . print_r($_FILES, true));
     }
 }
 
-// --- Fetch Existing Events ---
+// --- Fetch Existing Events for Display ---
 $events = [];
 if (isset($conn)) {
-    // Fetch events and their album images
-    // Using GROUP_CONCAT to get all image paths for an album in one go
+    // Fetch events, their album details, and image paths
     $sql = "SELECT e.eid, e.etitle, e.etag, e.etext, e.AlbumId, e.status, e.created_at, e.updated_at,
-            GROUP_CONCAT(DISTINCT ai.image_path SEPARATOR '||') as album_image_paths,
-            a.album_name
-            FROM event e
-            LEFT JOIN album a ON e.AlbumId = a.AlbumId
+            a.album_name,
+            GROUP_CONCAT(DISTINCT ai.image_path SEPARATOR '||') as album_image_paths
+            FROM events e
+            LEFT JOIN albums a ON e.AlbumId = a.AlbumId
             LEFT JOIN album_images ai ON a.AlbumId = ai.AlbumId 
-            GROUP BY e.eid, a.AlbumId /* Include all non-aggregated columns from SELECT in GROUP BY */
+            GROUP BY e.eid -- Group by the primary key of the main table (events)
             ORDER BY e.created_at DESC";
     $result = $conn->query($sql);
-    if ($result) { 
-        while($row = $result->fetch_assoc()) { 
-            $events[] = $row; 
-        } 
+    if ($result) {
+        while($row = $result->fetch_assoc()) {
+            $events[] = $row;
+        }
+    } else {
+        // Avoid overwriting POST handling messages
+        if(empty($message)) {
+            $message = "Error fetching events: " . $conn->error;
+            $message_type = 'error';
+        }
     }
-    else { $message = "Error fetching events: " . $conn->error; $message_type = 'error'; }
-} else { 
+} else {
     if (empty($message)) { // Avoid overwriting POST handling messages
-        $message = "DB connection not available to fetch events."; $message_type = 'error'; 
+        $message = "Database connection not available. Cannot fetch or manage events.";
+        $message_type = 'error';
     }
 }
 ?>
@@ -586,8 +607,8 @@ if (isset($conn)) {
 
     <div class="form-section">
         <h3 id="formTitle">Add New Event</h3>
-        <form id="eventForm" action="" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="action" id="action" value="insert">
+        <form id="eventForm" action="event.php" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" id="formAction" value="insert">
             <input type="hidden" name="existing_album_id" id="existing_album_id" value="">
             
             <div id="images_to_delete_container"></div>
@@ -604,14 +625,16 @@ if (isset($conn)) {
             <label for="etext">Event Description:</label>
             <textarea id="etext" name="etext" class="tinymce"></textarea>
 
-            <label>Current Images (if any):</label>
-            <div id="current_eimgs_preview_container" class="image-preview-container">
-                </div>
+            <div id="current-images-section" style="display:none;"> <label>Current Images:</label>
+                <div id="current_eimgs_preview_container" class="image-preview-container">
+                    </div>
+            </div>
 
             <label for="eimgs">Add/Replace Event Images (select multiple):</label>
             <input type="file" id="eimgs" name="eimgs[]" multiple accept="image/jpeg,image/png,image/gif,image/webp">
+            <small>Max file size: 5MB. Allowed types: JPG, JPEG, PNG, GIF, WEBP.</small>
             
-            <div class="button-group">
+            <div class="button-group" style="margin-top: 20px;">
                 <button type="submit" id="submitButton">Save Event</button>
                 <button type="button" id="cancelEdit" style="display: none;">Cancel Edit</button>
             </div>
@@ -629,7 +652,7 @@ if (isset($conn)) {
                     <th>Title</th>
                     <th>Tags</th>
                     <th>Description Preview</th>
-                    <th>Images from Album: <em style="font-size:0.8em; color: #555;">(<?php echo htmlspecialchars($event['album_name'] ?? 'No Album'); ?>)</em></th>
+                    <th>Images</th>
                     <th>Status</th>
                     <th>Created At</th>
                     <th>Updated At</th>
@@ -643,18 +666,24 @@ if (isset($conn)) {
                             <td><?php echo htmlspecialchars($event['eid']); ?></td>
                             <td><?php echo htmlspecialchars($event['etitle']); ?></td>
                             <td><?php echo nl2br(htmlspecialchars($event['etag'])); ?></td>
-                            <td><?php $desc = strip_tags($event['etext']); echo htmlspecialchars(mb_substr($desc, 0, 100)) . (mb_strlen($desc) > 100 ? '...' : ''); ?></td>
+                            <td>
+                                <?php 
+                                $desc = strip_tags($event['etext']); 
+                                echo htmlspecialchars(mb_substr($desc, 0, 100)) . (mb_strlen($desc) > 100 ? '...' : ''); 
+                                ?>
+                            </td>
                             <td class="album-images-cell">
                                 <?php
                                 if (!empty($event['album_image_paths'])) {
                                     $image_paths = explode('||', $event['album_image_paths']);
-                                    $image_paths = array_unique(array_filter($image_paths)); // Ensure unique and non-empty paths
+                                    $image_paths = array_unique(array_filter($image_paths)); // Ensure unique and non-empty
                                     foreach ($image_paths as $path) {
-                                        if (file_exists($path)) { // Check if file still exists
-                                            echo '<img src="' . htmlspecialchars($path) . '?t=' . filemtime($path) . '" alt="Event Image from album ' . htmlspecialchars($event['album_name'] ?? $event['AlbumId']) . '">';
+                                        if (file_exists($path)) {
+                                            // Append a timestamp to URL to help with caching issues if image is updated
+                                            echo '<img src="' . htmlspecialchars($path) . '?t=' . @filemtime($path) . '" alt="Event Image from album ' . htmlspecialchars($event['album_name'] ?? $event['AlbumId']) . '">';
                                         } else {
-                                            // Optionally display a placeholder or message for missing files
                                             // echo '<img src="path/to/placeholder.png" alt="Image not found">';
+                                            // Or simply don't show anything if file is missing, or log an error.
                                         }
                                     }
                                 } else {
@@ -667,138 +696,179 @@ if (isset($conn)) {
                             <td><?php echo htmlspecialchars(date("Y-m-d H:i", strtotime($event['updated_at']))); ?></td>
                             <td class="actions-cell">
                                 <button class="edit-btn"
-                                        data-eid="<?php echo htmlspecialchars($event['eid']); ?>"
-                                        data-etitle="<?php echo htmlspecialchars($event['etitle']); ?>"
-                                        data-etag="<?php echo htmlspecialchars($event['etag']); ?>"
-                                        data-etext="<?php echo htmlspecialchars($event['etext']); ?>"
-                                        data-albumid="<?php echo htmlspecialchars($event['AlbumId'] ?? ''); ?>"
-                                        data-albumimages="<?php echo htmlspecialchars($event['album_image_paths'] ?? ''); ?>"
-                                        data-albumname="<?php echo htmlspecialchars($event['album_name'] ?? ''); ?>">
-                                    Edit
-                                </button>
-                                <form action="" method="POST" style="display:inline;">
+                                    data-eid="<?php echo htmlspecialchars($event['eid']); ?>"
+                                    data-etitle="<?php echo htmlspecialchars($event['etitle']); ?>"
+                                    data-etag="<?php echo htmlspecialchars($event['etag']); ?>"
+                                    data-etext="<?php echo htmlspecialchars($event['etext']); ?>"
+                                    data-albumid="<?php echo htmlspecialchars($event['AlbumId'] ?? ''); ?>"
+                                    data-images="<?php echo htmlspecialchars($event['album_image_paths'] ?? ''); ?>"
+                                    type="button">Edit</button>
+                                <form action="event.php" method="POST" style="display: inline-block;">
                                     <input type="hidden" name="eid" value="<?php echo htmlspecialchars($event['eid']); ?>">
-                                    <input type="hidden" name="action" value="<?php echo $event['status'] == 1 ? 'deactivate' : 'activate'; ?>">
-                                    <button type="submit"><?php echo $event['status'] == 1 ? 'Deactivate' : 'Activate'; ?></button>
+                                    <button type="submit" name="action" value="delete" onclick="return confirm('Are you sure you want to delete this event and its album? This cannot be undone.');">Delete</button>
                                 </form>
-                                <form action="" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this event and its album? This cannot be undone.');">
+                                <form action="event.php" method="POST" style="display: inline-block;">
                                     <input type="hidden" name="eid" value="<?php echo htmlspecialchars($event['eid']); ?>">
-                                    <input type="hidden" name="action" value="delete">
-                                    <button type="submit">Delete</button>
+                                    <?php if ($event['status'] == 1): ?>
+                                        <button type="submit" name="action" value="deactivate">Deactivate</button>
+                                    <?php else: ?>
+                                        <button type="submit" name="action" value="activate">Activate</button>
+                                    <?php endif; ?>
                                 </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="9">No events found.</td></tr>
+                    <tr>
+                        <td colspan="9" style="text-align: center;">No events found.</td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div> 
 
-<script src="https://cdn.tiny.cloud/1/9tftpew6nchs467m3z4d2v9e5xmvvvl8bis1m0g7iqt8w7bs/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script> 
-
-
-
+</div> <script src="https://cdn.tiny.cloud/1/9tftpew6nchs467m3z4d2v9e5xmvvvl8bis1m0g7iqt8w7bs/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
-tinymce.init({
-    selector: '.tinymce',
-    plugins: 'advlist autolink lists link image charmap print preview hr anchor pagebreak',
-    toolbar_mode: 'floating',
-    height: 300,
-    // Add any other configurations you need
-});
+    tinymce.init({
+        selector: 'textarea.tinymce',
+        plugins: 'code lists link image media table wordcount fullscreen preview searchreplace help',
+        toolbar: 'undo redo | styleselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media | table | code | fullscreen preview | searchreplace | help',
+        height: 300,
+        menubar: 'file edit view insert format tools table help',
+        // Removed image upload handler as it's handled by the main form file input
+        // setup: function (editor) {
+        //     editor.on('change', function () {
+        //         tinymce.triggerSave();
+        //     });
+        // }
+    });
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('eventForm');
-    const actionInput = document.getElementById('action');
     const formTitle = document.getElementById('formTitle');
-    const submitButton = document.getElementById('submitButton');
-    const cancelEditButton = document.getElementById('cancelEdit');
+    const formActionInput = document.getElementById('formAction');
+    const existingAlbumIdInput = document.getElementById('existing_album_id');
     const eidInput = document.getElementById('eid');
     const etitleInput = document.getElementById('etitle');
     const etagInput = document.getElementById('etag');
+    // const etextTextarea = document.getElementById('etext'); // For TinyMCE, interact via its API
+    const submitButton = document.getElementById('submitButton');
+    const cancelEditButton = document.getElementById('cancelEdit');
     const currentImagesPreviewContainer = document.getElementById('current_eimgs_preview_container');
     const imagesToDeleteContainer = document.getElementById('images_to_delete_container');
-    const existingAlbumIdInput = document.getElementById('existing_album_id');
     const newImagesInput = document.getElementById('eimgs');
+    const currentImagesSection = document.getElementById('current-images-section');
 
+    function resetFormToDefaults() {
+        form.reset(); // Resets native form elements
+        formTitle.textContent = 'Add New Event';
+        formActionInput.value = 'insert';
+        existingAlbumIdInput.value = '';
+        eidInput.readOnly = false;
+        eidInput.value = ''; 
+        etitleInput.value = '';
+        etagInput.value = '';
+        if (tinymce.get('etext')) {
+            tinymce.get('etext').setContent('');
+        }
+        currentImagesPreviewContainer.innerHTML = '';
+        imagesToDeleteContainer.innerHTML = ''; // Clear hidden inputs for deletion
+        newImagesInput.value = ''; // Clear file input
+        currentImagesSection.style.display = 'none';
+        cancelEditButton.style.display = 'none';
+        submitButton.textContent = 'Save Event';
+        window.scrollTo(0, form.offsetTop - 20); // Scroll to form
+    }
+
+    cancelEditButton.addEventListener('click', function() {
+        resetFormToDefaults();
+    });
 
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function() {
-            formTitle.textContent = 'Edit Event';
-            actionInput.value = 'update';
+            const eventData = this.dataset;
+
+            formTitle.textContent = 'Edit Event: ' + eventData.etitle;
+            formActionInput.value = 'update';
+            existingAlbumIdInput.value = eventData.albumid || '';
+            
+            eidInput.value = eventData.eid;
+            eidInput.readOnly = true;
+
+            etitleInput.value = eventData.etitle;
+            etagInput.value = eventData.etag;
+
+            if (tinymce.get('etext')) {
+                tinymce.get('etext').setContent(eventData.etext || '');
+            } else {
+                // Fallback if TinyMCE hasn't initialized yet for some reason (should not happen with DOMContentLoaded)
+                document.getElementById('etext').value = eventData.etext || '';
+            }
+            
             submitButton.textContent = 'Update Event';
             cancelEditButton.style.display = 'inline-block';
+            currentImagesSection.style.display = 'block';
 
-            eidInput.value = this.dataset.eid;
-            eidInput.readOnly = true; // Prevent editing ID during update
-            etitleInput.value = this.dataset.etitle;
-            etagInput.value = this.dataset.etag;
-            tinymce.get('etext').setContent(this.dataset.etext);
-            existingAlbumIdInput.value = this.dataset.albumid || '';
+            // Clear previous previews and deletion markers
+            currentImagesPreviewContainer.innerHTML = '';
+            imagesToDeleteContainer.innerHTML = '';
+            newImagesInput.value = ''; // Clear file input for new images
 
-            currentImagesPreviewContainer.innerHTML = ''; // Clear previous previews
-            imagesToDeleteContainer.innerHTML = ''; // Clear previous images marked for deletion
+            if (eventData.images) {
+                const imagePaths = eventData.images.split('||').filter(path => path.trim() !== '');
+                if (imagePaths.length > 0) {
+                    currentImagesSection.style.display = 'block';
+                    imagePaths.forEach(path => {
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'image-preview-item';
 
-            const albumImages = this.dataset.albumimages ? this.dataset.albumimages.split('||') : [];
-            albumImages.forEach(imgPath => {
-                if (imgPath) {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'image-preview-item';
-                    
-                    const img = document.createElement('img');
-                    img.src = imgPath + '?t=' + new Date().getTime(); // Cache bust
-                    img.className = 'image-preview';
-                    img.alt = 'Current Image';
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.type = 'button';
-                    deleteBtn.className = 'delete-existing-image-btn';
-                    deleteBtn.innerHTML = '&times;'; // 'X' symbol
-                    deleteBtn.title = 'Mark to delete this image';
+                        const img = document.createElement('img');
+                        // Add a cache-busting query parameter to ensure fresh image is shown
+                        img.src = path + '?t=' + new Date().getTime(); 
+                        img.alt = 'Existing image';
+                        img.className = 'image-preview'; // from your CSS
 
-                    deleteBtn.onclick = function() {
-                        // Add a hidden input to mark this image for deletion
-                        const hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.name = 'images_to_delete[]';
-                        hiddenInput.value = imgPath;
-                        imagesToDeleteContainer.appendChild(hiddenInput);
-                        
-                        // Visually remove or strike-through the image preview
-                        itemDiv.style.opacity = '0.5';
-                        deleteBtn.disabled = true;
-                        deleteBtn.textContent = 'RDY'; // Marked
-                         // itemDiv.remove(); // Or just remove it
-                    };
-                    
-                    itemDiv.appendChild(img);
-                    itemDiv.appendChild(deleteBtn);
-                    currentImagesPreviewContainer.appendChild(itemDiv);
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
+                        deleteBtn.className = 'delete-existing-image-btn';
+                        deleteBtn.innerHTML = '&times;'; // 'X' symbol
+                        deleteBtn.title = 'Mark for deletion';
+
+                        deleteBtn.addEventListener('click', function() {
+                            previewItem.classList.add('marked-for-deletion');
+                            this.disabled = true; // Prevent multiple clicks
+                            this.textContent = '✓'; // Indicate it's marked
+
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = 'images_to_delete[]';
+                            hiddenInput.value = path;
+                            imagesToDeleteContainer.appendChild(hiddenInput);
+                        });
+
+                        previewItem.appendChild(img);
+                        previewItem.appendChild(deleteBtn);
+                        currentImagesPreviewContainer.appendChild(previewItem);
+                    });
+                } else {
+                     currentImagesSection.style.display = 'none'; // Hide if no images
                 }
-            });
-            newImagesInput.value = ''; // Clear the file input
-            window.scrollTo(0, 0); // Scroll to top of page
+            } else {
+                 currentImagesSection.style.display = 'none'; // Hide if no images string
+            }
+            window.scrollTo(0, form.offsetTop - 20); // Scroll to form for better UX
         });
     });
-
-    cancelEditButton.addEventListener('click', function() {
-        formTitle.textContent = 'Add New Event';
-        actionInput.value = 'insert';
-        submitButton.textContent = 'Save Event';
-        this.style.display = 'none';
-        eidInput.readOnly = false;
-        form.reset();
-        tinymce.get('etext').setContent('');
-        currentImagesPreviewContainer.innerHTML = '';
-        imagesToDeleteContainer.innerHTML = '';
-        existingAlbumIdInput.value = '';
-        newImagesInput.value = ''; // Clear the file input
-    });
 });
+
 </script>
 <?php
-// include('include/footer.php'); // If you have a footer
+// It's good practice to close the connection if it was opened.
+// Assuming your footer.php might handle this or it's handled by PHP at script end.
+// if (isset($conn) && $conn instanceof mysqli) {
+// $conn->close();
+// }
+// include('include/footer.php'); // If you have a footer file
 ?>
+</body>
+</html>
