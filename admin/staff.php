@@ -120,7 +120,8 @@ h3 {
 .form-section input[type=text],
 .form-section input[type=number], /* Added type number for ID */
 .form-section input[type=file],
-.form-section textarea { /* Style the original textarea */
+.form-section textarea,
+.form-section select { /* Style the select box */
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
@@ -137,8 +138,8 @@ h3 {
 
 /* TinyMCE styling might need adjustments inside its own config or specific CSS overrides if default doesn't fit */
 .tox-tinymce {
-      border: 1px solid #ccc !important; /* Add !important cautiously */
-      border-radius: var(--border-radius) !important;
+        border: 1px solid #ccc !important; /* Add !important cautiously */
+        border-radius: var(--border-radius) !important;
 }
 
 
@@ -206,7 +207,7 @@ h3 {
 .staff-table tbody tr:nth-child(even) { /* Changed from course-table */
     background-color: var(--light-color); /* Subtle striping */
 }
-.staff-table tbody tr:hover {  /* Changed from course-table */
+.staff-table tbody tr:hover {     /* Changed from course-table */
     background-color: #e9ecef; /* Hover effect */
 }
 .staff-table img { /* Changed from course-table */
@@ -218,7 +219,7 @@ h3 {
 }
 .staff-table .actions-cell { /* Changed from course-table */
     white-space: nowrap; /* Prevent action buttons from wrapping */
-      min-width: 240px; /* Ensure enough space for buttons */
+        min-width: 240px; /* Ensure enough space for buttons */
 }
 .staff-table .actions-cell form { /* Changed from course-table */
     display: inline-block;
@@ -293,8 +294,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
     $action = $_POST['action'] ?? '';
     $stid = $_POST['stid'] ?? null; // Staff ID
     $sname = $_POST['sname'] ?? ''; // Staff Name
-    $spos = $_POST['spos'] ?? '';   // Staff Position
-    $sed = $_POST['sed'] ?? '';     // Staff Education/Details
+    $spos = $_POST['spos'] ?? '';     // Staff Position
+    $sed = $_POST['sed'] ?? '';       // Staff Education/Details
     $existing_stimg = $_POST['existing_stimg'] ?? ''; // Existing Staff Image
     $stimg = $existing_stimg; // Staff Image
 
@@ -356,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($conn)) {
                         } else {
                             $status = 1; // Default status to active
                             // Added spos to INSERT query and bind_param
-                            $stmt = $conn->prepare("INSERT INTO staff (stid, sname, spos, sed, stimg, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
+                            $stmt = $conn->prepare("INSERT INTO staff (stid,sname, spos, sed, stimg, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
                             $stmt->bind_param("sssssi", $stid, $sname, $spos, $sed, $stimg, $status); // Added 's' for spos
                             if ($stmt->execute()) {
                                 $message = "New staff member added successfully.";
@@ -452,26 +453,56 @@ if (isset($conn)) {
     <?php endif; ?>
 
     <div class="form-section">
-        <h3 id="formTitle">Add New Staff</h3> <form id="staffForm" action="" method="POST" enctype="multipart/form-data"> <input type="hidden" name="action" id="action" value="insert">
+        <h3 id="formTitle">Add New Staff</h3>
+        <form id="staffForm" action="" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" id="action" value="insert">
 
-            <label for="stid">Staff ID:</label> <input type="text" id="stid" name="stid" required>
+            <label for="stid">Staff ID:</label>
+            <input type="text" id="stid" name="stid" required>
 
-            <label for="sname">Staff Name:</label> <input type="text" id="sname" name="sname" required>
+            <label for="sname">Staff Name:</label>
+            <input type="text" id="sname" name="sname" required>
 
-            <label for="spos">Position:</label> <input type="text" id="spos" name="spos" required>
+            <label for="spos">Position:</label>
+            <select id="spos" name="spos" required>
+                <option value="">Select Profession</option>
+                <option value="Prof. Sir">Prof. Sir</option>
+                <option value="Director">Director</option>
+                <option value="Lecturer">Lecturer</option>
+                <option value="Teacher">Teacher</option>
+                <option value="Assistant Professor">Assistant Professor</option>
+                <option value="Associate Professor">Associate Professor</option>
+                <option value="Dean">Dean</option>
+                <option value="Principal">Principal</option>
+                </select>
 
-            <label for="sed">Education/Details:</label> <textarea id="sed" name="sed"></textarea> <label for="stimg">Staff Image:</label> <input type="file" id="stimg" name="stimg" accept="image/jpeg, image/png, image/gif, image/webp"> <input type="hidden" name="existing_stimg" id="existing_stimg" value=""> <img id="current_stimg_preview" src="#" alt="Current Staff Image" style="display: none;" class="image-preview"> <div class="button-group">
-                <button type="submit" id="submitButton">Save Staff</button> <button type="button" id="cancelEdit" style="display: none;">Cancel Edit</button>
+            <label for="sed">Education/Details:</label>
+            <textarea id="sed" name="sed"></textarea>
+
+            <label for="stimg">Staff Image:</label>
+            <input type="file" id="stimg" name="stimg" accept="image/jpeg, image/png, image/gif, image/webp">
+            <input type="hidden" name="existing_stimg" id="existing_stimg" value="">
+            <img id="current_stimg_preview" src="#" alt="Current Staff Image" style="display: none;" class="image-preview">
+
+            <div class="button-group">
+                <button type="submit" id="submitButton">Save Staff</button>
+                <button type="button" id="cancelEdit" style="display: none;">Cancel Edit</button>
             </div>
         </form>
     </div>
 
     <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
-    <div class="staff-list-section"> <h3>Current Staff</h3> <table class="staff-table"> <thead>
+    <div class="staff-list-section">
+        <h3>Current Staff</h3>
+        <table class="staff-table">
+            <thead>
                 <tr>
-                    <th>Staff ID</th> <th>Name</th>
-                    <th>Position</th> <th>Education/Details Preview</th> <th>Image</th>
+                    <th>Staff ID</th>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Education/Details Preview</th>
+                    <th>Image</th>
                     <th>Status</th>
                     <th>Created At</th>
                     <th>Updated At</th>
@@ -483,31 +514,43 @@ if (isset($conn)) {
                     <?php foreach ($staff_members as $staff): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($staff['stid']); ?></td>
-                            <td><?php echo htmlspecialchars($staff['spos']); ?></td> 
-                            <td><?php $desc = strip_tags($staff['sed']); echo htmlspecialchars(mb_substr($desc, 0, 100)) . (mb_strlen($desc) > 100 ? '...' : ''); ?></td> 
-                            <td><?php if (!empty($staff['stimg']) && file_exists($staff['stimg'])): ?><img src="<?php echo htmlspecialchars($staff['stimg']); ?>" alt="Staff Image"><?php else: ?><span>No Image</span><?php endif; ?></td> 
+                            <td><?php echo htmlspecialchars($staff['sname']); ?></td>
+                            <td><?php echo htmlspecialchars($staff['spos']); ?></td>
+                            <td><?php $desc = strip_tags($staff['sed']); echo htmlspecialchars(mb_substr($desc, 0, 100)) . (mb_strlen($desc) > 100 ? '...' : ''); ?></td>
+                            <td><?php if (!empty($staff['stimg']) && file_exists($staff['stimg'])): ?><img src="<?php echo htmlspecialchars($staff['stimg']); ?>" alt="Staff Image"><?php else: ?><span>No Image</span><?php endif; ?></td>
                             <td><span class="status-<?php echo $staff['status'] == 1 ? 'active' : 'inactive'; ?>"><?php echo $staff['status'] == 1 ? 'Active' : 'Inactive'; ?></span></td>
                             <td><?php echo date("Y-m-d" , strtotime($staff['created_at'])); ?></td>
                             <td><?php echo date("Y-m-d" , strtotime($staff['updated_at'])); ?></td>
                             <td class="actions-cell">
                                 <button class="edit-btn"
-                                        data-stid="<?php echo htmlspecialchars($staff['stid']); ?>" 
+                                        data-stid="<?php echo htmlspecialchars($staff['stid']); ?>"
                                         data-sname="<?php echo htmlspecialchars($staff['sname']); ?>"
-                                        data-spos="<?php echo htmlspecialchars($staff['spos']); ?>" 
-                                        data-sed="<?php echo htmlspecialchars($staff['sed']); ?>" 
-                                        data-stimg="<?php echo htmlspecialchars($staff['stimg']); ?>">Edit</button> 
+                                        data-spos="<?php echo htmlspecialchars($staff['spos']); ?>"
+                                        data-sed="<?php echo htmlspecialchars($staff['sed']); ?>"
+                                        data-stimg="<?php echo htmlspecialchars($staff['stimg']); ?>">Edit</button>
                                 <form action="" method="POST" onsubmit="return confirm('Delete this staff member?');" style="display:inline-block;">
-                                    <input type="hidden" name="action" value="delete"><input type="hidden" name="stid" value="<?php echo htmlspecialchars($staff['stid']); ?>"><button type="submit" value="delete">Delete</button></form> 
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="stid" value="<?php echo htmlspecialchars($staff['stid']); ?>">
+                                    <button type="submit" value="delete">Delete</button>
+                                </form>
                                 <?php if ($staff['status'] == 1): ?>
-                                    <form action="" method="POST" style="display:inline-block;"><input type="hidden" name="action" value="deactivate"><input type="hidden" name="stid" value="<?php echo htmlspecialchars($staff['stid']); ?>"><button type="submit" value="deactivate">Deactivate</button></form> 
+                                    <form action="" method="POST" style="display:inline-block;">
+                                        <input type="hidden" name="action" value="deactivate">
+                                        <input type="hidden" name="stid" value="<?php echo htmlspecialchars($staff['stid']); ?>">
+                                        <button type="submit" value="deactivate">Deactivate</button>
+                                    </form>
                                 <?php else: ?>
-                                    <form action="" method="POST" style="display:inline-block;"><input type="hidden" name="action" value="activate"><input type="hidden" name="stid" value="<?php echo htmlspecialchars($staff['stid']); ?>"><button type="submit" value="activate">Activate</button></form>
+                                    <form action="" method="POST" style="display:inline-block;">
+                                        <input type="hidden" name="action" value="activate">
+                                        <input type="hidden" name="stid" value="<?php echo htmlspecialchars($staff['stid']); ?>">
+                                        <button type="submit" value="activate">Activate</button>
+                                    </form>
                                 <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="9" style="text-align: center; padding: 20px;">No staff members found.</td></tr> {/* Changed colspan to 9 and message */}
+                    <tr><td colspan="9" style="text-align: center; padding: 20px;">No staff members found.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -520,14 +563,16 @@ if (isset($conn)) {
   </div>
 </footer>
 
-</div> <script>
+</div>
+
+<script>
     document.addEventListener('DOMContentLoaded', function() {
         // --- Get Form Elements ---
         const staffForm = document.getElementById('staffForm'); // Changed ID
         const actionInput = document.getElementById('action');
         const stidInput = document.getElementById('stid'); // Changed ID
         const snameInput = document.getElementById('sname'); // Changed ID
-        const sposInput = document.getElementById('spos');   // New ID
+        const sposSelect = document.getElementById('spos'); // New ID for select box
         const sedTextarea = document.getElementById('sed'); // Changed ID
         const stimgInput = document.getElementById('stimg'); // Changed ID
         const existingStimgInput = document.getElementById('existing_stimg'); // Changed ID
@@ -550,7 +595,7 @@ if (isset($conn)) {
                 stidInput.value = stid;
                 stidInput.readOnly = true;
                 snameInput.value = sname;
-                sposInput.value = spos; // Populate spos field
+                sposSelect.value = spos; // Populate spos select box
                 existingStimgInput.value = stimg;
 
                 if (typeof tinymce !== 'undefined' && tinymce.get('sed')) { tinymce.get('sed').setContent(sed || ''); } // Check for 'sed'
@@ -577,7 +622,7 @@ if (isset($conn)) {
             stidInput.value = '';
             stidInput.readOnly = false;
             snameInput.value = '';
-            sposInput.value = ''; // Clear spos field
+            sposSelect.value = ''; // Clear spos select box
             stimgInput.value = ''; // Clear the file input
             existingStimgInput.value = '';
             currentStimgPreview.src = '#';
@@ -605,4 +650,3 @@ if (isset($conn)) {
         });
     });
 </script>
-

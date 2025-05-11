@@ -20,154 +20,31 @@
     
     <section id="slider-part" class="slider-active">
 
+    <?php
+    $sql = mysqli_query($con, "select * from slider"); // Select all slider items
+    while ($row = mysqli_fetch_array($sql)) {
+        ?>
 
-    <?php $sql=mysqli_query($con,"select * from slider WHERE Slider_ID='1' ");
-                        while($row=mysqli_fetch_array($sql))
-                        
-                                    
-                                    {
-                                           ?>
-
-
-        <div class="single-slider bg_cover pt-150"  style="background-image: url(img/slider/<?php echo $row['Image'];?>); height:300px;"  data-overlay="4">
+        <div class="single-slider bg_cover pt-150" style="background-image: url(admin/<?php echo $row['simg']; ?>); height:600px; margin-bottom:30px;" data-overlay="4">
             <div class="container">
                 <div class="row">
                     <div class="col-xl-7 col-lg-9">
                         <div class="slider-cont">
-                            
-                       
 
 
-                            
-                            <h1 data-animation="bounceInLeft" data-delay="1s"><?php echo $row['Title'];?></h1>
-                            <p data-animation="fadeInUp" data-delay="1.3s"><?php echo $row['Detail'];?></p>
+                            <h1 data-animation="bounceInLeft" data-delay="1s"><?php echo $row['stitle']; ?></h1>
+                            <p data-animation="fadeInUp" data-delay="1.1s"><?php echo $row['stext']; ?></p>
                             <ul>
-
-
-                            <?php } ?>
-
-
                                 <li><a data-animation="fadeInUp" data-delay="1.6s" class="main-btn" href="#">Read More</a></li>
                                 <li><a data-animation="fadeInUp" data-delay="1.9s" class="main-btn main-btn-2" href="#">Get Started</a></li>
                             </ul>
                         </div>
                     </div>
-                </div> <!-- row -->
-            </div> <!-- container -->
-        </div> <!-- single slider -->
-        
-        
-    <?php $sql=mysqli_query($con,"select * from slider WHERE Slider_ID='2' ");
-                        while($row=mysqli_fetch_array($sql))
-                        
-                                    
-                                    {
-                                           ?>
+                </div> </div> </div> <?php
+    } // End of the while loop
+    ?>
 
-
-        <div class="single-slider bg_cover pt-150"  style="background-image: url(img/slider/<?php echo $row['Image'];?>); height:300px;"  data-overlay="4">
-            <div class="container">
-                <div class="row">
-                    <div class="col-xl-7 col-lg-9">
-                        <div class="slider-cont">
-                            
-                       
-
-
-                            
-                            <h1 data-animation="bounceInLeft" data-delay="1s"><?php echo $row['Title'];?></h1>
-                            <p data-animation="fadeInUp" data-delay="1.3s"><?php echo $row['Detail'];?></p>
-                            <ul>
-
-
-                            <?php } ?>
-
-
-                                <li><a data-animation="fadeInUp" data-delay="1.6s" class="main-btn" href="#">Read More</a></li>
-                                <li><a data-animation="fadeInUp" data-delay="1.9s" class="main-btn main-btn-2" href="#">Get Started</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div> <!-- row -->
-            </div> <!-- container -->
-        </div> <!-- single slider -->
-        
-       
-    <?php $sql=mysqli_query($con,"select * from slider WHERE Slider_ID='3' ");
-                        while($row=mysqli_fetch_array($sql))
-                        
-                                    
-                                    {
-                                           ?>
-
-
-        <div class="single-slider bg_cover pt-150"  style="background-image: url(img/slider/<?php echo $row['Image'];?>); height:300px;"  data-overlay="4">
-            <div class="container">
-                <div class="row">
-                    <div class="col-xl-7 col-lg-9">
-                        <div class="slider-cont">
-                            
-                       
-
-
-                            
-                            <h1 data-animation="bounceInLeft" data-delay="1s"><?php echo $row['Title'];?></h1>
-                            <p data-animation="fadeInUp" data-delay="1.3s"><?php echo $row['Detail'];?></p>
-                            <ul>
-
-
-                            <?php } ?>
-
-
-                                <li><a data-animation="fadeInUp" data-delay="1.6s" class="main-btn" href="#">Read More</a></li>
-                                <li><a data-animation="fadeInUp" data-delay="1.9s" class="main-btn main-btn-2" href="#">Get Started</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div> <!-- row -->
-            </div> <!-- container -->
-        </div> <!-- single slider -->
-
-        
-    <?php $sql=mysqli_query($con,"select * from slider WHERE Slider_ID='4' ");
-                        while($row=mysqli_fetch_array($sql))
-                        
-                                    
-                                    {
-                                           ?>
-
-
-        <div class="single-slider bg_cover pt-150"  style="background-image: url(img/slider/<?php echo $row['Image'];?>); height:300px;"  data-overlay="4">
-            <div class="container">
-                <div class="row">
-                    <div class="col-xl-7 col-lg-9">
-                        <div class="slider-cont">
-                            
-                       
-
-
-                            
-                            <h1 data-animation="bounceInLeft" data-delay="1s"><?php echo $row['Title'];?></h1>
-                            <p data-animation="fadeInUp" data-delay="1.3s"><?php echo $row['Detail'];?></p>
-                            <ul>
-
-
-                            <?php } ?>
-
-
-                                <li><a data-animation="fadeInUp" data-delay="1.6s" class="main-btn" href="#">Read More</a></li>
-                                <li><a data-animation="fadeInUp" data-delay="1.9s" class="main-btn main-btn-2" href="#">Get Started</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div> <!-- row -->
-            </div> <!-- container -->
-        </div> <!-- single slider -->
-
-
-
-
-    </section>
+</section>
     
     <!--====== SLIDER PART ENDS ======-->
    

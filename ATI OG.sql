@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: May 09, 2025 at 10:02 PM
+-- Generation Time: May 11, 2025 at 04:13 AM
 -- Server version: 8.2.0
 -- PHP Version: 7.4.33
 
@@ -20,21 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `ati`
 --
-
--- --------------------------------------------------------
-
---
--- Table structure for table `admin`
---
-
-DROP TABLE IF EXISTS `admin`;
-CREATE TABLE IF NOT EXISTS `admin` (
-  `id` int NOT NULL,
-  `name` varchar(25) NOT NULL,
-  `pass` varchar(25) NOT NULL,
-  `hint` varchar(10) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -182,6 +167,38 @@ INSERT INTO `news` (`nid`, `ntitle`, `ntag`, `ntext`, `nimg`, `count`, `status`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `notifications`
+--
+
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `item_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'e.g., Slider, News, Event, Course, Announcement',
+  `item_id` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'The ID from the respective table (sid, nid, eid, cid, announcement_id)',
+  `item_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Title or name of the item for easier display',
+  `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'e.g., activated, deactivated',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'When the notification was created',
+  `is_read` tinyint(1) DEFAULT '0' COMMENT 'Whether the notification has been viewed/marked as read (optional)',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `password_resets`
+--
+
+DROP TABLE IF EXISTS `password_resets`;
+CREATE TABLE IF NOT EXISTS `password_resets` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `token` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `expires_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `slider`
 --
 
@@ -202,11 +219,11 @@ CREATE TABLE IF NOT EXISTS `slider` (
 --
 
 INSERT INTO `slider` (`sid`, `stitle`, `stext`, `simg`, `created_at`, `updated_at`, `status`) VALUES
-(1, 'ssdd', '<p><strong><span data-huuid=\"5263834898667689665\">HHK is an acronym that can refer to a few different things, including&nbsp;<mark>Household Kerosene</mark>&nbsp;(HHK), a fuel commonly used for cooking and lighting.&nbsp;</span><span data-huuid=\"5263834898667691122\">It can also refer to the Happy Hacking Keyboard (HHKB), a minimalist keyboard designed for developers.&nbsp;</span><span data-huuid=\"5263834898667688483\">Additionally, HHK can be a shorthand for the Healthy Hearts and Kidneys (HHK) study.<span data-cid=\"35dcf7a8-5ce5-434c-989d-26704435c337\">&nbsp;</span></span> </strong></p>', 'uploads/main2.png', '2025-05-06 01:09:28', '2025-05-06 02:24:32', 1),
-(2, 'sdsd', '<p>sds</p>', 'uploads/main2.png', '2025-05-06 01:38:37', '2025-05-06 02:13:38', 1),
-(3, 'sdsd', '<p>sdsd&nbsp;</p>\r\n<p>sd</p>\r\n<ol>\r\n<li>d</li>\r\n<li>s</li>\r\n<li>ds</li>\r\n<li>d</li>\r\n</ol>', 'uploads/about.png', '2025-05-06 01:39:23', '2025-05-06 01:41:27', 1),
-(5, 'gffgf', '<p>fgfg</p>', 'uploads/main2.png', '2025-05-06 02:24:43', '2025-05-06 02:24:43', 1),
-(4, 'gffgf', '<p>fgfg</p>', 'uploads/main2.png', '2025-05-06 02:18:48', '2025-05-06 02:18:48', 1);
+(1, 'ssdd', '<p><strong><span data-huuid=\"5263834898667689665\">HHK is an acronym that can refer to a few different things, including&nbsp;<mark>Household Kerosene</mark>&nbsp;(HHK),&nbsp;</span></strong></p>', 'uploads/sliders/1746936223_360_F_85631184_nn8CvFT4qgIMOcp5ygFHFbO9y2kOTfq7.jpg', '2025-05-06 01:09:28', '2025-05-11 09:34:20', 1),
+(2, 'sdsd', '<p>sds</p>', 'uploads/sliders/1746936542_Cb5MxgeWIAA5_dw.jpeg', '2025-05-06 01:38:37', '2025-05-11 09:39:02', 1),
+(3, 'sdsd', '<p>sdsd&nbsp;</p>\r\n<p>sd</p>\r\n<ol>\r\n<li>d</li>\r\n</ol>', 'uploads/sliders/1746936529_360_F_288280107_bmTxS166WBTOrzoN0F3hsC3cliPa3QhU-removebg-preview.png', '2025-05-06 01:39:23', '2025-05-11 09:38:49', 1),
+(5, 'Test Title 1', '<p><em>Test Title By</em> <strong>Vihanga Manodhya</strong></p>', 'uploads/sliders/1746907135_shiwan2.jpg', '2025-05-06 02:24:43', '2025-05-11 01:30:26', 1),
+(4, 'gffgf', '', 'uploads/sliders/1746936203_Hiyare-Reservoir-Rainforest_1920x700.jpg', '2025-05-06 02:18:48', '2025-05-11 09:33:23', 1);
 
 -- --------------------------------------------------------
 
@@ -225,15 +242,73 @@ CREATE TABLE IF NOT EXISTS `staff` (
   `stimg` varchar(255) NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`stid`)
-) ENGINE=MyISAM AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `staff`
 --
 
 INSERT INTO `staff` (`stid`, `sname`, `spos`, `sed`, `status`, `created_at`, `stimg`, `updated_at`) VALUES
-(3, 'asasas', '3asasasas', 'asasas', 1, '2025-05-05 06:52:48', '3', '2025-05-07 17:05:03'),
-(12, 'wew', 'aasas', 'asasas', 1, '2025-05-07 17:00:49', 'uploads/staff/1746617449_main2.png', '2025-05-07 17:00:49');
+(3, 'asasas', 'Lecturer', 'asasas', 1, '2025-05-05 06:52:48', 'uploads/staff/1746906078_dr_anil-jasinghe-1.jpg', '2025-05-11 01:11:18'),
+(12, 'wew', 'Director', 'asasas', 1, '2025-05-07 17:00:49', 'uploads/staff/1746617449_main2.png', '2025-05-11 01:10:38'),
+(32, 'Vihanga', 'Dean', 'asasa', 1, '2025-05-11 01:10:26', 'uploads/staff/1746906026_472745161_1242913236776931_4955227281785020762_n.jpg', '2025-05-11 01:10:26');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `university_announcements`
+--
+
+DROP TABLE IF EXISTS `university_announcements`;
+CREATE TABLE IF NOT EXISTS `university_announcements` (
+  `announcement_id` varchar(125) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `image_path` varchar(255) DEFAULT NULL,
+  `target_audience` varchar(100) DEFAULT 'all',
+  `priority` int DEFAULT '0',
+  `publish_datetime` datetime DEFAULT NULL,
+  `expiry_datetime` datetime DEFAULT NULL,
+  `status` int NOT NULL DEFAULT '0',
+  `view_count` int DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`announcement_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `university_announcements`
+--
+
+INSERT INTO `university_announcements` (`announcement_id`, `title`, `content`, `image_path`, `target_audience`, `priority`, `publish_datetime`, `expiry_datetime`, `status`, `view_count`, `created_at`, `updated_at`) VALUES
+('ANNc001', 'anouncement 1', '<p>asas&nbsp; &nbsp;<strong>special announcement</strong></p>', 'uploads/announcement_images/1746828714_681e7daada9c8_Cb5MxgeWIAA5_dw.jpeg', 'students', 1, '2025-05-07 03:41:00', '2025-05-31 03:41:00', 0, 0, '2025-05-09 22:11:54', '2025-05-09 22:11:54');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `profile_image` varchar(255) DEFAULT NULL,
+  `pet_name_hint` varchar(100) DEFAULT NULL,
+  `childhood_nickname_hint` varchar(100) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`)
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `username`, `password`, `profile_image`, `pet_name_hint`, `childhood_nickname_hint`, `created_at`) VALUES
+(1, 'mano', '$2y$10$qdNL3J/F2d4La0lAiwE28.Qy.j5igG9SfecqPmyFX0UzINB3w2A1C', 'uploads/profile_images/user_681f340a5b08d5.10968859.jpg', 'priyantha', 'batta', '2025-05-10 16:40:02'),
+(2, 'rane', '$2y$10$7QIdOlKBQE9edDxHY4KOveUHxInlHjHNNpi1/tRY7vN8bfUZheEdm', 'uploads/profile_images/user_681f38fb739d61.56117676.jpg', 'priyantha', 'batta', '2025-05-10 17:01:07');
 
 --
 -- Constraints for dumped tables
