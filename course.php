@@ -1,545 +1,314 @@
-<?php include_once("include/header.php");?>
+<?php
+// Include the header which should handle the database connection and start the HTML document
+include_once("include/header.php");
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HNDA Diploma Information</title>
-    <style>
-      
+// Ensure the database connection variable $con is set by the header.php
+if (!isset($con) || $con->connect_error) {
+    // Handle database connection error more robustly
+    echo "<div style='color: red; text-align: center; padding: 20px;'>Database connection error: " . ($con->connect_error ?? 'Could not connect') . "</div>";
+    // Optionally include footer and exit, but header should ideally handle fatal errors before outputting body
+    // include_once("include/footer.php"); // Footer would close the body/html tags
+    exit(); // Stop script execution on critical error
+}
 
-        .container1 {
-            max-width: 960px;
-            margin: 0 auto;
-            background-color: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            background: colorrgba(108, 108, 108, 0.35);;
-        }
+// Fetch all courses for the sidebar
+$all_courses = [];
+$sql_all_courses = "SELECT cid, cname FROM course ORDER BY cname"; // Order alphabetically
+$stmt_all_courses = $con->prepare($sql_all_courses);
+if ($stmt_all_courses) {
+    $stmt_all_courses->execute();
+    $result_all_courses = $stmt_all_courses->get_result();
+    while ($row = $result_all_courses->fetch_assoc()) {
+        $all_courses[] = $row;
+    }
+    $stmt_all_courses->close();
+} else {
+    // Handle error if prepared statement fails
+    error_log("Error preparing statement for all courses: " . $con->error);
+    // Optionally set a user-facing error message here if fetching courses is critical
+}
 
-      
-        header h1 {
-            margin: 0;
-            color: #00bcd4; /* Teal */
-            font-size: 2em;
-        }
+// Initialize variables for course data and modules
+$course_data = null;
+$modules_data_by_year_sem = []; // Store modules grouped by year and semester
 
-        .tab-navigation {
-            display: flex;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #eee;
-        }
+// Check if cid is present in the URL
+$selected_cid = $_GET['cid'] ?? null; // Use null coalescing operator for cleaner check
 
-        .tab-button {
-            background-color: #eee;
-            color: #333;
-            border: none;
-            padding: 10px 15px;
-            cursor: pointer;
-            border-radius: 5px 5px 0 0;
-            margin-right: 5px;
-            transition: background-color 0.3s ease; /* Added transition */
-        }
+if ($selected_cid !== null) {
+    // Fetch course details
+    $sql_course = "SELECT cid, cname, ctext, cimg FROM course WHERE cid = ?";
+    $stmt_course = $con->prepare($sql_course);
+    if ($stmt_course) {
+        $stmt_course->bind_param("s", $selected_cid); // Assuming 'cid' is a string
+        $stmt_course->execute();
+        $result_course = $stmt_course->get_result();
+        $course_data = $result_course->fetch_assoc(); // Get the single row
+        $stmt_course->close();
 
-        .tab-button:hover {
-            background-color: #ddd; /* Hover effect */
-        }
+        // Only proceed to fetch modules if the course was found
+        if ($course_data) {
+            // Fetch ALL module details for the selected course, ordered by year and semester
+            $sql_all_modules = "SELECT module_code, module_title, module_type, credits, status, year, semester FROM modules WHERE cid = ? ORDER BY year, semester, module_code";
+            $stmt_all_modules = $con->prepare($sql_all_modules);
+            if ($stmt_all_modules) {
+                $stmt_all_modules->bind_param("s", $selected_cid); // Assuming 'cid' is a string
+                $stmt_all_modules->execute();
+                $result_all_modules = $stmt_all_modules->get_result();
 
-        .tab-button.active {
-            background-color: #fff;
-            border-bottom: none;
-            font-weight: bold;
-            color: #00bcd4; /* Active color */
-        }
+                // Group modules by Year and Semester
+                while ($module = $result_all_modules->fetch_assoc()) {
+                    $year = $module['year'];
+                    $semester = $module['semester'];
+                    // Create nested arrays if they don't exist
+                    if (!isset($modules_data_by_year_sem[$year])) {
+                        $modules_data_by_year_sem[$year] = [];
+                    }
+                     if (!isset($modules_data_by_year_sem[$year][$semester])) {
+                        $modules_data_by_year_sem[$year][$semester] = [];
+                    }
+                    // Add the module to the correct group
+                    $modules_data_by_year_sem[$year][$semester][] = $module;
+                }
 
-        .content-section {
-            padding: 20px 0;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 20px;
-            display: none; /* Initially hide all sections */
-        }
+                $result_all_modules->free(); // Free result set
+                $stmt_all_modules->close();
 
-        .content-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
+                 // Sort years and semesters numerically
+                 ksort($modules_data_by_year_sem);
+                 foreach ($modules_data_by_year_sem as $year => $semesters) {
+                     ksort($modules_data_by_year_sem[$year]);
+                 }
 
-        /* --- Basic Layout --- */
-        .main-layout {
-            display: grid;
-            grid-template-columns: 2fr 1fr; /* Adjust proportions as needed */
-            gap: 20px;
-        }
-
-        .main-content {
-            padding-right: 20px;
-        }
-
-        .sidebar {
-            padding: 20px;
-            background-color: #f9f9f9;
-            border: 1px solid #eee;
-        }
-
-        .sidebar h2 {
-            color: #00bcd4;
-            margin-top: 0;
-            font-size: 1.4em;
-            border-bottom: 2px solid #b2ebf2;
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-        }
-
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .sidebar li {
-            margin-bottom: 8px;
-        }
-
-        .sidebar a {
-            text-decoration: none;
-            color: #333;
-            display: block;
-            padding: 5px 0;
-        }
-
-        .search-box {
-            margin-bottom: 20px;
-        }
-
-        .search-box input[type="text"] {
-            padding: 8px;
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .latest-news .news-item {
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px dotted #ccc;
-        }
-
-        .latest-news .news-item a {
-            text-decoration: none;
-            color: #007bff;
-            font-weight: bold;
-        }
-
-        .latest-news .news-item p {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
-        .courses .courses-list li a {
-            color: #007bff;
-            font-weight: normal;
-        }
-
-        /* --- Admission Criteria --- */
-        .admission-criteria h3 {
-            color: #333;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-
-        .admission-criteria p {
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }
-
-        .admission-criteria .and-condition {
-            font-weight: bold;
-            color: #007bff; /* Example color */
-            margin-top: 15px;
-            margin-bottom: 5px;
-        }
-
-        .admission-criteria .or-condition {
-            font-weight: bold;
-            color: #dc3545; /* Example color */
-            margin-top: 5px;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-
-        .admission-criteria ol {
-            margin-left: 20px;
-            margin-bottom: 10px;
-        }
-
-        .admission-criteria ol li {
-            margin-bottom: 8px;
-        }
-
-        /* --- Subjects and Credits --- */
-        .subjects-and-credits-content h3 {
-            color: #333;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-
-        .subjects-and-credits-content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-        }
-
-        .subjects-and-credits-content th,
-        .subjects-and-credits-content td {
-            padding: 8px 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        .subjects-and-credits-content th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-
-        .subjects-and-credits-content tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        .subjects-and-credits-content .total-row {
-            font-weight: bold;
-        }
-
-        .related-links {
-            background-color: #f9f9f9;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-top: none;
-        }
-
-        .related-links ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .related-links li {
-            margin-bottom: 8px;
-        }
-
-        .related-links li a {
-            text-decoration: none;
-            color: #007bff;
-            display: block;
-            padding: 5px 0;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .main-layout {
-                grid-template-columns: 1fr; /* Stack columns on smaller screens */
-            }
-
-            .main-content {
-                padding-right: 0;
-            }
-
-            .sidebar {
-                margin-top: 20px;
-            }
-
-            .tab-navigation {
-                flex-direction: column; /* Stack tabs vertically */
-            }
-
-            .tab-button {
-                margin-right: 0;
-                margin-bottom: 5px;
-                border-radius: 5px;
+            } else {
+                 error_log("Error preparing statement for all modules: " . $con->error);
+                 // Optionally set a user-facing error message here
             }
         }
-    </style>
-</head>
-<body>
-    <div class="container1">
-        <header>
-            <h1>HIGHER NATIONAL DIPLOMA IN ACCOUNTANCY - (HNDA)</h1><br>
-        </header>
+    } else {
+        error_log("Error preparing statement for course details: " . $con->error);
+         // Optionally set a user-facing error message here
+    }
+}
 
-        <div class="tab-navigation">
-            <button class="tab-button" onclick="showSection('home')" data-section="home">Home</button>
-            <button class="tab-button" onclick="showSection('entryProfile')" data-section="entryProfile">Entry Profile</button>
-            <button class="tab-button" onclick="showSection('subjectsCredits')" data-section="subjectsCredits">Subjects and Credits</button>
-        </div>
+// The header.php should have already opened the body tag
+?>
+    <div class="main-container" id="course">
+        <div class="main-content">
+            <?php if ($selected_cid !== null): // Display course details and modules only if cid is set ?>
+                <?php if ($course_data): ?>
+                    <h1 align="center"><?php echo htmlspecialchars($course_data['cname']); ?></h1>
+                    <h4 style="margin:5px;">Entry Profile</h4>
 
-        <div id="home" class="content-section">
-            <div class="main-layout">
-                <section class="main-content">
-                    <p>The Higher National Diploma in Accountancy (HNDA) was established in 1943 in the name of National Diploma in Accountancy with the aim of detecting, preventing frauds, errors, and malpractices in Ceylon Tea Estates and Ceylon Railway; and this was the first professional accounting course introduced back then in Sri Lanka (Ceylon). Later, this course was transformed into the Higher National Diploma in Accountancy (HNDA) in 1946.</p>
-                    <p>Gradually, this course gained popularity and in 1963 part-time evening classes were also introduced in order to meet the market demand. Per Public Administration Circular No.46/90 of 1990, the HNDA qualification is considering as an equivalent/( an alternate) to a Bachelors of Commerce degree (B. Com) offered by an accredited university, recognized by University Grant Commission (UGC) of Sri Lanka. This course is mandated for auditing enterprises, excluding public sector organizations and quoted companies. The certified auditors credential were granted for the HNDA holders in 1968. Beginning 2001, the HNDA program is conducting courses throughout the Island by the Advanced Technological Institute (ATIs) which is administered by the Sri Lanka Institute of Advanced Technological Education (SLIATE).</p>
-                    <p>After completing the HNDA program, the HNDA holders can start their own careers as a registered auditor and can conduct the audit of companies except for public sector organizations and quoted companies.</p>
-                </section>
-                <aside class="sidebar">
-                    <div class="search-box">
-                        <h2>Search</h2>
-                        <input type="text" placeholder="Search...">
+                    <div class="course-info">
+                        <?php if (!empty($course_data['cimg'])): // Check if image path is not empty ?>
+                        <?php endif; ?>
+                        <p><p><?php echo nl2br($course_data['ctext']); ?></p></p>
                     </div>
-                    <div class="latest-news">
-                        <h2>Latest news</h2>
-                        <ul>
-                            <li class="news-item"><a href="#">Examination Notice</a></li>
-                            <li class="news-item"><a href="#">Late Application Opportunity for the 20th Diploma Awarding...</a></li>
-                            <li class="news-item"><a href="#">Mr. M. C. L. Rodrigo officially assumed duties as the Director...</a></li>
-                            <li class="news-item"><a href="#">Signing MOU between SLIATE and SLIM.</a></li>
-                            <li class="news-item"><a href="#">Mr. H. Athauda Seneviratne assumed duties as the Director...</a></li>
-                        </ul>
-                    </div>
-                    <div class="courses">
-                        <h2>Courses</h2>
-                        <ul class="courses-list">
-                            <li><a href="#">Accountancy</a></li>
-                            <li><a href="#">Agriculture</a></li>
-                        </ul>
-                    </div>
-                </aside>
-            </div>
+
+                    <h4>Subjects and Credits</h4>
+
+                    
+
+                    <?php if (!empty($modules_data_by_year_sem)): ?>
+                        <?php foreach ($modules_data_by_year_sem as $year => $semesters): ?>
+                            <?php foreach ($semesters as $semester => $modules_list): ?>
+                                <h2>Year <?php echo htmlspecialchars($year); ?> - Semester <?php echo htmlspecialchars($semester); ?></h2>
+                                <table class="module-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Module Code</th>
+                                            <th>Module Title</th>
+                                            <th>Module Type</th>
+                                            <th>Credits</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                        $total_credits = 0;
+                                        foreach ($modules_list as $module):
+                                            $total_credits += $module['credits'];
+                                        ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($module['module_code']); ?></td>
+                                                <td><?php echo htmlspecialchars($module['module_title']); ?></td>
+                                                <td><?php echo htmlspecialchars($module['module_type']); ?></td>
+                                                <td><?php echo htmlspecialchars($module['credits']); ?></td>
+                                                <td><?php echo htmlspecialchars($module['status'] == 1 ? 'Active' : 'Inactive'); ?></td> </tr>
+                                        <?php endforeach; ?>
+                                        <tr>
+                                            <th colspan="3" style="text-align: right;">TOTAL CREDITS</th>
+                                            <th><?php echo htmlspecialchars($total_credits); ?></th>
+                                            <th></th>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                         <?php if ($course_data): // Only show this if course exists but has no modules ?>
+                             <p>No modules found for this course.</p>
+                         <?php endif; ?>
+                    <?php endif; ?>
+
+                <?php else: ?>
+                    <p>Course not found.</p>
+                <?php endif; ?>
+            <?php else: ?>
+                 <h1>Select a Course</h1>
+                 <p>Please select a course from the list on the right to view its details and modules.</p>
+            <?php endif; ?>
         </div>
 
-        <div id="entryProfile" class="content-section">
-            <div class="admission-criteria">
-                <h3>Full Time (The first and second year lectures are conducted as full time during the weekdays, while the third and fourth year lectures are conducted during the weekends.) ( Duration : 4 years)</h3>
-                <p>Passes for all the subjects in one sitting at the G.C.E. (A/L) examination with credit pass for Economics and Accountancy..</p>
-                <p>A credit pass in Mathematics at the G.C.E (O/L) is considered as an alternative for a credit pass in either Economics or Accountancy at the G.C.E (A/L) examination.</p>
-                <p class="and-condition"><strong>AND</strong></p>
-                <p>An ordinary pass in English Language at the G.C.E. (O/L) examination.</p>
-
-                <h3>Part Time (Part time program will be conducted during the weekends) (Duration : 4 years)</h3>
-                <p><strong>Those who have completed GCE (A/L) examination on or before 2012. Should have one of followings:</strong></p>
-                <ol type="i">
-                    <li>Passes for all four subjects / three subjects in one sitting at the G.C.E. (A/L) Examination
-                        <p class="or-condition"><strong>OR</strong></p>
-                    </li>
-                    <li>Any of the certificate courses given below conducted by the Department of Technical Education & Training (DTET).
-                        <ol type="A">
-                            <li>Completion of National Certificate in Accounting Technicians.</li>
-                            <li>Completion of National Certificate in Business Studies.</li>
-                            <li>Completion of National Certificate in Accounting.</li>
-                        </ol>
-                    </li>
-                </ol>
-                <p class="and-condition"><strong>AND</strong></p>
-                <p>Applicant should be employed in the relevant field in a government institution/public enterprise/recognized firm or self-employment (Entrepreneur).</p>
-            </div>
-        </div>
-
-        <div id="subjectsCredits" class="content-section">
-            <div class="subjects-and-credits-content">
-                <h3>Year 1 - Semester 1</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Module Code</th>
-                            <th>Module Title</th>
-                            <th>Module Type</th>
-                            <th>Credits</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>HNDA 1101</td>
-                            <td>Fundamentals of Financial Accounting</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1102</td>
-                            <td>Business Mathematics</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1103</td>
-                            <td>Commercial Awareness</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1104</td>
-                            <td>Business Communication I</td>
-                            <td>Core</td>
-                            <td>02</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1105</td>
-                            <td>Introduction to Computers</td>
-                            <td>Core</td>
-                            <td>02</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr class="total-row">
-                            <td colspan="3">TOTAL</td>
-                            <td>16</td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <h3>Year 1 - Semester 2</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Module Code</th>
-                            <th>Module Title</th>
-                            <th>Module Type</th>
-                            <th>Credits</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>HNDA 1201</td>
-                            <td>Intermediate Financial Accounting</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1202</td>
-                            <td>Statistical Analysis for Management</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1203</td>
-                            <td>Micro & Macro Economics</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1204</td>
-                            <td>Business Communication II</td>
-                            <td>Core</td>
-                            <td>02</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 1205</td>
-                            <td>Computer Applications</td>
-                            <td>Core</td>
-                            <td>02</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr class="total-row">
-                            <td colspan="3">TOTAL</td>
-                            <td>16</td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <h3>Year 2 - Semester 1</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Module Code</th>
-                            <th>Module Title</th>
-                            <th>Module Type</th>
-                            <th>Credits</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>HNDA 2101</td>
-                            <td>Advanced Financial Accounting</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 2102</td>
-                            <td>Operations Research</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 2103</td>
-                            <td>Principles of Auditing & Taxation</td>
-                            <td>Core</td>
-                            <td>04</td>
-                            <td>GPA</td>
-                        </tr>
-                        <tr>
-                            <td>HNDA 2104</td>
-                            <td>Business Communication III</td>
-                            <td>Core</td>
-                            <td>02</td>
-                            <td>GPA</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="related-links">
-            <ul>
-                <li><a href="#">Information Technology</a></li>
-                <li><a href="#">Food Technology</a></li>
-                <li><a href="#">Quantity Survey</a></li>
-                <li><a href="#">Tourism and Hospitality</a></li>
-                <li><a href="#">Management</a></li>
-                <li><a href="#">Comsumer Science and Product Technology</a></li>
-                <li><a href="#">Mechanical</a></li>
-            </ul>
+        <div class="sidebar">
+            <h2>Courses</h2>
+            <?php if (!empty($all_courses)): ?>
+                <ul>
+                    <?php foreach ($all_courses as $course): ?>
+                        <?php
+                            // Add 'active' class to the link if it's the currently selected course
+                            $active_class = ($selected_cid == $course['cid']) ? ' class="active"' : '';
+                        ?>
+                        <li><a href="?cid=<?php echo urlencode($course['cid']); ?>"<?php echo $active_class; ?>><?php echo htmlspecialchars($course['cname']); ?></a></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <p>No courses available.</p>
+            <?php endif; ?>
         </div>
     </div>
 
-    <script>
-        function showSection(sectionId) {
-            // Hide all content sections
-            const sections = document.querySelectorAll('.content-section');
-            sections.forEach(section => {
-                section.style.display = 'none';
-            });
+    <style>
+        /* Add or adjust CSS as needed */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .main-container {
+            display: flex; /* Use flexbox for layout */
+            max-width: 1200px; /* Adjust max-width as needed */
+            margin: 20px auto;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px; /* Added some border-radius */
+            overflow: hidden; /* Ensures child elements respect border-radius */
+        }
+        .main-content {
+            flex-grow: 1; /* Allow main content to take up available space */
+            padding: 20px;
+            box-sizing: border-box; /* Include padding in the element's total width */
+        }
+        .sidebar {
+            flex-basis: 250px; /* Fixed width for the sidebar */
+            flex-shrink: 0; /* Prevent sidebar from shrinking */
+            background-color: #eee; /* Light grey background for sidebar */
+            padding: 20px;
+            box-sizing: border-box; /* Include padding in the element's total width */
+            border-left: 1px solid #ddd; /* Separator line */
+        }
+        .sidebar h2 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #00bcd4; /* Underline for the heading */
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar li {
+            margin-bottom: 8px;
+        }
+        .sidebar a {
+            text-decoration: none;
+            color: #0056b3; /* Link color */
+            display: block; /* Make the link fill the list item */
+            padding: 5px 0;
+            transition: color 0.3s ease, font-weight 0.3s ease;
+        }
+        .sidebar a:hover {
+            color: #00bcd4; /* Hover color */
+        }
+         .sidebar a.active {
+             font-weight: bold;
+             color: #00bcd4; /* Active color */
+         }
 
-            // Show the requested section
-            const activeSection = document.getElementById(sectionId);
-            if (activeSection) {
-                activeSection.style.display = 'block'; // Use block display
+
+        h1, h2, h3 {
+            color: #00bcd4;
+        }
+         h2 { /* Style for Year/Semester headings */
+             margin-top: 30px;
+             margin-bottom: 15px;
+             border-bottom: 1px solid #eee;
+             padding-bottom: 5px;
+         }
+        .course-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .module-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px; /* Added border-radius */
+            overflow: hidden; /* Ensures border-radius applies */
+        }
+        .module-table th, .module-table td {
+            padding: 10px 12px; /* Adjusted padding */
+            text-align: left;
+            border-bottom: 1px solid #eee;
+             /* Added vertical alignment */
+            vertical-align: top;
+        }
+        .module-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .module-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+         .module-table tbody tr:hover {
+             background-color: #e9e9e9; /* Hover effect for rows */
+         }
+         .module-table td:first-child { font-weight: bold; } /* Bold module code */
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column; /* Stack columns on smaller screens */
+                margin: 10px;
             }
-
-            // Remove active class from all buttons
-            const buttons = document.querySelectorAll('.tab-button');
-            buttons.forEach(button => {
-                button.classList.remove('active');
-            });
-
-            // Add active class to the clicked button using data-section attribute
-            const activeButton = document.querySelector(`.tab-button[data-section="${sectionId}"]`);
-            if (activeButton) {
-                activeButton.classList.add('active');
+            .sidebar {
+                flex-basis: auto; /* Allow sidebar to take up full width */
+                border-left: none;
+                border-bottom: 1px solid #ddd; /* Add a bottom border */
             }
         }
+    </style>
 
-        // Show the home section by default on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            showSection('home');
-        });
-    </script>
-</body>
-</html>
+<?php
+// Include the footer which should close the body and html tags
+include_once("include/footer.php");
 
-
-<?php include_once("include/footer.php");?>
+// It's generally good practice to close the connection at the end of the script
+// However, if header.php establishes a persistent connection or footer.php closes it,
+// you might not need this explicitly here.
+// if (isset($con) && $con instanceof mysqli && !$con->connect_error) {
+//     mysqli_close($con);
+// }
+// Assuming header establishes, and footer may or may not close.
+// It's safer to handle connection closing where it's opened or via a dedicated function.
+// Given the header inclusion structure, I'll rely on header/footer for connection management.
+?>

@@ -232,66 +232,100 @@
 </head>
 <body>
 
-    <section class="staff-section-container">
+    <section class="staff-section-container" id="staff">
          <h2 class="section-title">Our Staff</h2> 
          <br><br>
         <div class="cards-wrapper">
             <div class="staff-cards-container">
                
 
-                <div class="staff-card" style="background-image: url('img/staff/ar.jpg');"> <div class="card-title-bar">
-                        ASSISTANT
-                    </div>
-                    <div class="card-overlay">
-                        <div class="card-content">
-                            <div class="staff-name">Emily White</div>
-                            <div class="staff-qualifications">Dip. IT</div>
-                            <div class="staff-position">Administrative Assistant</div>
-                            <button class="more-button">MORE</button>
-                        </div>
-                    </div>
-                </div>
+            <?php
+// 1. Include your database configuration and connection file.
+include_once ("config.php");
 
-                 <div class="staff-card" style="background-image: url('img/staff/dir.jpg');"> <div class="card-title-bar">
-                        LECTURER
-                    </div>
-                    <div class="card-overlay">
-                        <div class="card-content">
-                            <div class="staff-name">Michael Blue</div>
-                            <div class="staff-qualifications">MSc, BE</div>
-                            <div class="staff-position">Lecturer</div>
-                            <button class="more-button">MORE</button>
-                        </div>
-                    </div>
-                </div>
+// --- PHP Logic to Fetch Staff Data ---
 
-                <div class="staff-card" style="background-image: url('img/staff/lec.jpg');"> <div class="card-title-bar">
-                        ASSISTANT
-                    </div>
-                    <div class="card-overlay">
-                        <div class="card-content">
-                            <div class="staff-name">Emily White</div>
-                            <div class="staff-qualifications">Dip. IT</div>
-                            <div class="staff-position">Administrative Assistant</div>
-                            <button class="more-button">MORE</button>
-                        </div>
-                    </div>
-                </div>
+$staffMembers = []; // Initialize an empty array to store staff data
 
-                <div class="staff-card" style="background-image: url('img/staff/ar.jpg');"> <div class="card-title-bar">
-                        ASSISTANT
-                    </div>
-                    <div class="card-overlay">
-                        <div class="card-content">
-                            <div class="staff-name">Emily White</div>
-                            <div class="staff-qualifications">Dip. IT</div>
-                            <div class="staff-position">Administrative Assistant</div>
-                            <button class="more-button">MORE</button>
-                        </div>
-                    </div>
-                </div>
+// 2. Prepare the SQL query to select staff data.
+$sql = "SELECT stid, sname, spos, sed, status, created_at, stimg, updated_at FROM staff WHERE status = '1'"; // Assuming status '1' means active
 
+// 3. Execute the query and fetch the data (MySQLi example)
+if (isset($con)) {
+    $result = $con->query($sql);
 
+    if ($result) {
+        if ($result->num_rows > 0) {
+            // Fetch all results into the $staffMembers array
+            while($row = $result->fetch_assoc()) {
+                $staffMembers[] = $row;
+            }
+        } else {
+            // No staff members found
+            echo "<p>No staff members found.</p>";
+        }
+        // Optional: $result->free();
+    } else {
+        // Query failed
+        echo "Error executing query: " . $con->error;
+    }
+    // Optional: $con->close();
+} else {
+    echo "Database connection variable (\$con) not found. Please check your config.php.";
+    exit;
+}
+
+// --- HTML Block with PHP Loop to Display Staff Cards ---
+
+if (!empty($staffMembers)) {
+    foreach ($staffMembers as $staff) {
+        // Sanitize data before outputting
+        $sname = htmlspecialchars($staff['sname']);
+        $spos = htmlspecialchars($staff['spos']);
+        $sed = htmlspecialchars($staff['sed']);
+        $stimg_url = htmlspecialchars($staff['stimg']); // Assuming stimg contains the image file name
+
+        // Construct the full image path
+        $imagePath = 'admin/' . $stimg_url;
+?>
+    <div class="staff-card" style="background-image: url('<?php echo $imagePath; ?>');">
+        <div class="card-title-bar">
+            <?php echo $spos; // Display staff position in the title bar ?>
+        </div>
+        <div class="card-overlay">
+            <div class="card-content">
+                <div class="staff-name"><?php echo $sname; // Display staff name ?></div>
+                <div class="staff-qualifications"><?php echo $sed; // Display staff education ?></div>
+                <div class="staff-position"><?php echo $spos; // Display staff position again in the content ?></div>
+                <button class="more-button">MORE</button>
+            </div>
+        </div>
+    </div>
+<?php
+    } // End of foreach loop
+} else {
+    // Display a default card or message if no staff data is available
+    ?>
+    <div class="staff-card" style="background-image: url('img/staff/default.jpg');">
+        <div class="card-title-bar">
+            NO STAFF
+        </div>
+        <div class="card-overlay">
+            <div class="card-content">
+                <div class="staff-name">No Staff Available</div>
+                <div class="staff-qualifications"></div>
+                <div class="staff-position"></div>
+                <button class="more-button" disabled>MORE</button>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+// Optional: if (isset($con)) { $con->close(); }
+?>
+
+                
               
              
 

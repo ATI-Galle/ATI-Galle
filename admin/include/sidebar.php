@@ -1,226 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head> 
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Skydash Admin</title>
-    <!-- plugins:css -->
-    <link rel="stylesheet" href="assets/vendors/feather/feather.css">
-    <link rel="stylesheet" href="assets/vendors/ti-icons/css/themify-icons.css">
-    <link rel="stylesheet" href="assets/vendors/css/vendor.bundle.base.css">
-    <link rel="stylesheet" href="assets/vendors/font-awesome/css/font-awesome.min.css">
-    <link rel="stylesheet" href="assets/vendors/mdi/css/materialdesignicons.min.css">
-    <!-- endinject -->
-    <!-- Plugin css for this page -->
-    <!-- <link rel="stylesheet" href="assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css"> -->
-    <link rel="stylesheet" href="assets/vendors/datatables.net-bs5/dataTables.bootstrap5.css">
-    <link rel="stylesheet" href="assets/vendors/ti-icons/css/themify-icons.css">
-    <link rel="stylesheet" type="text/css" href="assets/js/select.dataTables.min.css">
-    <!-- End plugin css for this page -->
-    <!-- inject:css -->
-    <link rel="stylesheet" href="assets/css/style.css">
-    <!-- endinject -->
-    <link rel="shortcut icon" href="assets/images/favicon.png" />
-  </head>
-  <body>
-   
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Sidebar Menu</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+            margin-top:100px;        }
+
+        .content-wrapper {
+            margin-left: 260px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background-color:rgb(255, 255, 255);
+            color: #ecf0f1;
+            overflow-y: auto;
+            transition: left 0.3s ease, width 0.3s ease;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(153, 153, 153, 0.93);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background-color:rgb(255, 255, 255);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #ecf0f1;
+        }
+
+        .nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-item {
+            margin: 4px 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: #ecf0f1;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background-color:rgb(254, 246, 91);
+            border-left: 3px solidrgb(8, 109, 251);
+        }
+
+        .nav-link.active {
+            background-color:rgb(245, 245, 245);
+            border-left: 3px solidrgb(8, 107, 255);
+        }
+
+        .menu-icon {
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .menu-title {
+            font-size: 0.95rem;
+            flex-grow: 1;
+        }
+
+        .menu-arrow {
+            transition: transform 0.2s ease;
+        }
+
+        .nav-link[aria-expanded="true"] .menu-arrow {
+            transform: rotate(90deg);
+        }
+
+        .sub-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background-color:rgb(255, 239, 93);
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease;
+        }
+
+        .sub-menu.show {
+            max-height: 300px;
+        }
+
+        .sub-menu .nav-link {
+            padding: 10px 20px 10px 52px;
+            font-size: 0.9rem;
+        }
+
+        /* Toggle Button */
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            color:rgb(42, 171, 246);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            display: none;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .sidebar {
+                left: -260px;
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .content-wrapper {
+                margin-left: 0;
+            }
+            
+            .sidebar-toggle {
+                display: block;
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                z-index: 1001;
+                background-color: #2c3e50;
+                padding: 8px 12px;
+                border-radius: 4px;
+            }
+            
+            .sidebar-toggle.open {
+                left: 270px;
+            }
+        }
+        
+        /* Collapsed Sidebar */
+        .sidebar.collapsed {
+            width: 60px;
+        }
+        
+        .sidebar.collapsed .menu-title,
+        .sidebar.collapsed .menu-arrow {
+            display: none;
+        }
+        
+        .sidebar.collapsed .sidebar-header h3 {
+            display: none;
+        }
+        
+        .sidebar.collapsed ~ .content-wrapper {
+            margin-left: 60px;
+        }
+        
+        .collapse-toggle {
+            background: none;
+            border: none;
+            color: #ecf0f1;
+            cursor: pointer;
+        }
+        
+        /* Accessibility */
+        .nav-link:focus {
+            outline: 2px solid #3498db;
+        }
+        
+        /* Visual feedback for current page */
+        .nav-link.current {
+            background-color: #3498db;
+            border-left: 3px solid #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <button class="collapse-toggle" id="collapseToggle">
+            </button>
+        </div>
+        
+        <ul class="nav">
+            <li class="nav-item">
+                <a class="nav-link current" href="index.php">
+                    <i class="fas fa-tachometer-alt menu-icon"></i>
+                    <span class="menu-title">Dashboard</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#slidersMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-images menu-icon"></i>
+                    <span class="menu-title">Sliders</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="slidersMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="slider.php">
+                            <span class="menu-title">Manage Sliders</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#announcementsMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-bullhorn menu-icon"></i>
+                    <span class="menu-title">Announcements</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="announcementsMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="announcement.php">
+                            <span class="menu-title">Manage Announcements</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#courseMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-graduation-cap menu-icon"></i>
+                    <span class="menu-title">Courses</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="courseMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="course.php">
+                            <span class="menu-title">Manage Courses</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="module.php">
+                            <span class="menu-title">Manage Module</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#staffMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-users menu-icon"></i>
+                    <span class="menu-title">Staff</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="staffMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="staff.php">
+                            <span class="menu-title">Manage Staff</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+
+            <li class="nav-item">
+                <a class="nav-link" href="#Admins" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-user-plus menu-icon"></i>
+                    <span class="menu-title">Admins</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="Admins">
+                    <li class="nav-item">
+                        <a class="nav-link" href="Admin.php">
+                            <span class="menu-title">Manage Admins</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+
+            <li class="nav-item">
+                <a class="nav-link" href="#reviews" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-comment menu-icon"></i>
+                    <span class="menu-title">Reviews</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="reviews">
+                    <li class="nav-item">
+                        <a class="nav-link" href="reviews.php">
+                            <span class="menu-title">Manage Reviews</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#newsMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-newspaper menu-icon"></i>
+                    <span class="menu-title">News</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="newsMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="news.php">
+                            <span class="menu-title">Manage News</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#eventsMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-calendar-alt menu-icon"></i>
+                    <span class="menu-title">Events</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="eventsMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="event.php">
+                            <span class="menu-title">Manage Events</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#siteSettingsMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-cog menu-icon"></i>
+                    <span class="menu-title">Exam Results</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="siteSettingsMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="exam-result.php">
+                            <span class="menu-title">Manage Results</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="#siteSettingsMenu" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-cog menu-icon"></i>
+                    <span class="menu-title">Site Settings</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="siteSettingsMenu">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <span class="menu-title">Manage Site</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+        </ul>
+    </div>
 
   
-      <!-- partial:partials/_navbar.html -->
-      <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-  <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-start">
-    <a class="navbar-brand brand-logo me-5" href="index.html"><img src="assets/images/logo.svg" class="me-2" alt="logo" /></a>
-    <a class="navbar-brand brand-logo-mini" href="index.html"><img src="assets/images/logo-mini.svg" alt="logo" /></a>
-  </div>
-  <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-    <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-      <span class="icon-menu"></span>
-    </button>
-    <ul class="navbar-nav mr-lg-2">
-      <li class="nav-item nav-search d-none d-lg-block">
-        <div class="input-group">
-          <div class="input-group-prepend hover-cursor" id="navbar-search-icon">
-            <span class="input-group-text" id="search">
-              <i class="icon-search"></i>
-            </span>
-          </div>
-          <input type="text" class="form-control" id="navbar-search-input" placeholder="Search now" aria-label="search" aria-describedby="search">
-        </div>
-      </li>
-    </ul>
-    <ul class="navbar-nav navbar-nav-right">
-      <li class="nav-item dropdown">
-        <a class="nav-link count-indicator dropdown-toggle" id="notificationDropdown" href="#" data-bs-toggle="dropdown">
-          <i class="icon-bell mx-0"></i>
-          <span class="count"></span>
-        </a>
-        <div class="dropdown-menu dropdown-menu-right navbar-dropdown preview-list" aria-labelledby="notificationDropdown">
-          <p class="mb-0 font-weight-normal float-left dropdown-header">Notifications</p>
-          <a class="dropdown-item preview-item">
-            <div class="preview-thumbnail">
-              <div class="preview-icon bg-success">
-                <i class="ti-info-alt mx-0"></i>
-              </div>
-            </div>
-            <div class="preview-item-content">
-              <h6 class="preview-subject font-weight-normal">Application Error</h6>
-              <p class="font-weight-light small-text mb-0 text-muted"> Just now </p>
-            </div>
-          </a>
-          <a class="dropdown-item preview-item">
-            <div class="preview-thumbnail">
-              <div class="preview-icon bg-warning">
-                <i class="ti-settings mx-0"></i>
-              </div>
-            </div>
-            <div class="preview-item-content">
-              <h6 class="preview-subject font-weight-normal">Settings</h6>
-              <p class="font-weight-light small-text mb-0 text-muted"> Private message </p>
-            </div>
-          </a>
-          <a class="dropdown-item preview-item">
-            <div class="preview-thumbnail">
-              <div class="preview-icon bg-info">
-                <i class="ti-user mx-0"></i>
-              </div>
-            </div>
-            <div class="preview-item-content">
-              <h6 class="preview-subject font-weight-normal">New user registration</h6>
-              <p class="font-weight-light small-text mb-0 text-muted"> 2 days ago </p>
-            </div>
-          </a>
-        </div>
-      </li>
-      <li class="nav-item nav-profile dropdown">
-        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" id="profileDropdown">
-          <img src="assets/images/faces/face28.jpg" alt="profile" />
-        </a>
-        <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-          <a class="dropdown-item">
-            <i class="ti-settings text-primary"></i> Settings </a>
-          <a class="dropdown-item">
-            <i class="ti-power-off text-primary"></i> Logout </a>
-        </div>
-      </li>
-      <li class="nav-item nav-settings d-none d-lg-flex">
-        <a class="nav-link" href="#">
-          <i class="icon-ellipsis"></i>
-        </a>
-      </li>
-    </ul>
-    <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
-      <span class="icon-menu"></span>
-    </button>
-  </div>
-</nav>
-      <!-- partial -->
-      <div class="container-fluid page-body-wrapper">
-        <!-- partial:partials/_sidebar.html -->
-        <nav class="sidebar sidebar-offcanvas" id="sidebar">
-  <ul class="nav">
-    <li class="nav-item">
-      <a class="nav-link" href="index.html">
-        <i class="icon-grid menu-icon"></i>
-        <span class="menu-title">Dashboard</span>
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
-        <i class="icon-layout menu-icon"></i>
-        <span class="menu-title">Site Settings</span>
-        <i class="menu-arrow"></i>
-      </a>
-      
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#form-elements" aria-expanded="false" aria-controls="form-elements">
-        <i class="icon-columns menu-icon"></i>
-        <span class="menu-title">Sliders</span>
-        <i class="menu-arrow"></i>
-      </a>
-      
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#charts" aria-expanded="false" aria-controls="charts">
-        <i class="icon-bar-graph menu-icon"></i>
-        <span class="menu-title">announcements</span>
-        <i class="menu-arrow"></i>
-      </a>
-    
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#tables" aria-expanded="false" aria-controls="tables">
-        <i class="icon-grid-2 menu-icon"></i>
-        <span class="menu-title">Courses</span>
-        <i class="menu-arrow"></i>
-      </a>
-     
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#icons" aria-expanded="false" aria-controls="icons">
-        <i class="icon-contract menu-icon"></i>
-        <span class="menu-title">Staff</span>
-        <i class="menu-arrow"></i>
-      </a>
-      
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#auth" aria-expanded="false" aria-controls="auth">
-        <i class="icon-head menu-icon"></i>
-        <span class="menu-title">News</span>
-        <i class="menu-arrow"></i>
-      </a>
-     
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" data-bs-toggle="collapse" href="#error" aria-expanded="false" aria-controls="error">
-        <i class="icon-ban menu-icon"></i>
-        <span class="menu-title">Events</span>
-        <i class="menu-arrow"></i>
-      </a>
-     
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" href="../../../docs/documentation.html">
-        <i class="icon-paper menu-icon"></i>
-        <span class="menu-title">Documentation</span>
-      </a>
-    </li>
-  </ul>
-</nav>
 
-</div>
-       
-   
-<?php include("../slider.php");?>
-          <!-- partial -->
-        </div>
-        <!-- main-panel ends -->
-      </div>
-      <!-- page-body-wrapper ends -->
-    </div>
-    <!-- container-scroller -->
-    <!-- plugins:js -->
-    <script src="assets/vendors/js/vendor.bundle.base.js"></script>
-    <!-- endinject -->
-    <!-- Plugin js for this page -->
-    <script src="assets/vendors/chart.js/chart.umd.js"></script>
-    <script src="assets/vendors/datatables.net/jquery.dataTables.js"></script>
-    <!-- <script src="assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js"></script> -->
-    <script src="assets/vendors/datatables.net-bs5/dataTables.bootstrap5.js"></script>
-    <script src="assets/js/dataTables.select.min.js"></script>
-    <!-- End plugin js for this page -->
-    <!-- inject:js -->
-    <script src="assets/js/off-canvas.js"></script>
-    <script src="assets/js/template.js"></script>
-    <script src="assets/js/settings.js"></script>
-    <script src="assets/js/todolist.js"></script>
-    <!-- endinject -->
-    <!-- Custom js for this page-->
-    <script src="assets/js/jquery.cookie.js" type="text/javascript"></script>
-    <script src="assets/js/dashboard.js"></script>
-    <!-- <script src="assets/js/Chart.roundedBarCharts.js"></script> -->
-    <!-- End custom js for this page-->
-  </body>
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle mobile sidebar
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+                sidebarToggle.classList.toggle('open');
+            });
+            
+            // Toggle collapse sidebar
+            const collapseToggle = document.getElementById('collapseToggle');
+            
+            collapseToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                
+                // Change icon direction
+                const icon = collapseToggle.querySelector('i');
+                if (sidebar.classList.contains('collapsed')) {
+                    icon.classList.remove('fa-chevron-left');
+                    icon.classList.add('fa-chevron-right');
+                } else {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-left');
+                }
+            });
+            
+            // Toggle submenu
+            const menuLinks = document.querySelectorAll('.nav-link[data-toggle="collapse"]');
+            
+            menuLinks.forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Toggle aria-expanded
+                    const expanded = this.getAttribute('aria-expanded') === 'true';
+                    this.setAttribute('aria-expanded', !expanded);
+                    
+                    // Toggle submenu
+                    const targetId = this.getAttribute('href').replace('#', '');
+                    const submenu = document.getElementById(targetId);
+                    submenu.classList.toggle('show');
+                });
+            });
+            
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768) {
+                    const clickedInsideSidebar = sidebar.contains(e.target);
+                    const clickedOnToggle = sidebarToggle.contains(e.target);
+                    
+                    if (!clickedInsideSidebar && !clickedOnToggle && sidebar.classList.contains('open')) {
+                        sidebar.classList.remove('open');
+                        sidebarToggle.classList.remove('open');
+                    }
+                }
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    sidebar.classList.remove('open');
+                    sidebarToggle.classList.remove('open');
+                }
+            });
+        });
+    </script>
+</body>
 </html>

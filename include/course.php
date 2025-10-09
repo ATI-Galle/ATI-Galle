@@ -236,154 +236,160 @@
 
     <div class="controls">
      
+    <h2 class="section-title" style="margin-left:0px; text-align:left;
+">Departments</h2> 
+     <br><br>
 
     </div>
 
-    <div class="pure-slider-container">
+    <div class="pure-slider-container" id="course">
         <div id="slider-container" class="hide-scrollbar">
             <div id="slider-wrapper">
-                <div class="card-item">
-                    <div class="card bg-maroon">
-                        <div class="card-header">BUSINESS</div>
-                        <div class="card-image-area">
-                            <img src="img/course/test.jpg" class="card-image" alt="Business Professionals">
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text">
-                                The place where future business leaders, strategic managers, innovative entrepreneurs are forged via up-to-date knowledge and interdisciplinary thinking.
-                            </p>
-                            <button class="card-button">MORE</button>
-                        </div>
-                    </div>
+               
+
+            <?php
+// 1. Include your database configuration and connection file.
+// This file should establish the connection, e.g., to a variable like $conn (for MySQLi) or $pdo (for PDO).
+include_once ("config.php");
+
+// --- PHP Logic to Fetch Courses ---
+
+// We'll assume your config.php provides a MySQLi connection object named $conn.
+// If it uses PDO and a $pdo object, the query and fetch method will be different.
+
+$courses = []; // Initialize an empty array to store course data
+
+// 2. Prepare the SQL query to select all data from the 'course' table.
+// It's good practice to select specific columns rather than using '*'.
+// The 'status' column is often used to show only active records (e.g., status = 1 for active).
+// If you want ALL courses regardless of status, you can remove "WHERE status = 1".
+$sql = "SELECT cid, cname, ctext, cimg, created_at, updated_at, status FROM course WHERE status='1'"; // Or "SELECT * FROM course"
+// To fetch only 'active' courses (assuming 'status = 1' means active):
+// $sql = "SELECT cid, cname, ctext, cimg, created_at, updated_at, status FROM course WHERE status = 1";
+
+
+// 3. Execute the query and fetch the data (MySQLi example)
+if (isset($con)) { // Check if $con is set (should be from config.php)
+    $result = $con->query($sql);
+
+    if ($result) {
+        if ($result->num_rows > 0) {
+            // Fetch all results into the $courses array
+            while($row = $result->fetch_assoc()) {
+                $courses[] = $row;
+            }
+        } else {
+            // No courses found in the database
+            // You can set a message here if you want to display it later
+            // echo "<p>No courses found.</p>";
+        }
+        // Optional: $result->free(); // Free result set if using older PHP/MySQLi versions and large datasets
+    } else {
+        // Query failed
+        echo "Error executing query: " . $con->error;
+        // In a production environment, you'd log this error rather than echoing it.
+    }
+    // It's generally good practice to close the connection when you're done with all database operations on a page.
+    // However, if config.php handles connection management or if you have more queries later, you might not close it here.
+    // $con->close(); // Assuming $con is your connection variable
+} else {
+    echo "Database connection variable (\$con) not found. Please check your config.php.";
+    // Stop further execution if no DB connection
+    exit;
+}
+
+// --- HTML Block with PHP Loop ---
+
+// Check if there are any courses to display
+if (!empty($courses)) {
+    foreach ($courses as $course) {
+        // Sanitize data before outputting to prevent XSS vulnerabilities
+        $cname = htmlspecialchars($course['cname']);
+        $cimg_url = htmlspecialchars($course['cimg']); // Assuming cimg contains a full URL or a placeholder
+
+        // MODIFIED LINE: First strip tags, then apply htmlspecialchars
+        $ctext = htmlspecialchars(strip_tags($course['ctext']));
+
+        // $cid = $course['cid']; // If you need the ID for the "MORE" button link, for example  
+
+        // You might want a way to vary card colors, e.g., based on course type or cycling through a list
+        // For this example, we'll stick to the 'bg-purple' as in the static template,
+        // or you could implement a dynamic class assignment.
+        $card_bg_class = 'bg-purple'; // Default, or make this dynamic
+
+?>
+
+<?php
+if (!empty($courses)) {
+    foreach ($courses as $course) {
+        $cname = htmlspecialchars($course['cname']);
+        $cimg_url = htmlspecialchars($course['cimg']);
+        $ctext = htmlspecialchars(strip_tags($course['ctext']));
+        $cid = $course['cid']; // Get the course ID
+
+        
+
+        $card_bg_class = 'bg-purple';
+
+?> 
+    <div class="card-item" id="course">
+        <div class="card <?php echo $card_bg_class; ?>">
+            <div class="card-header"><?php echo $cname; ?></div>
+            <div class="card-image-area">
+                <img src="admin/<?php echo $cimg_url; ?>" class="card-image" alt="<?php echo $cname; ?>">
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    <?php echo $ctext; ?>
+                </p>
+                <a href="course.php?cid=<?php echo $cid; ?>" class="card-button">MORE</a>
+                
+            </div>
+        </div>
+    </div>
+        <?php
+    }
+} else {
+    // ... (your existing code for when no courses are found) ...
+}
+
+// ... (rest of your PHP code) ...
+?>
+        <?php
+    } // End of foreach loop
+} else {
+    // This part will be executed if the $courses array is empty (no records found or query failed silently before)
+    // You can display a "no courses available" message or a default card.
+    // For example, to show a message:
+    // echo "<div class='container'><p>Currently, there are no courses available. Please check back later.</p></div>";
+
+    // Or, if you want to display the placeholder card when no data is available as per the original structure:
+    /*
+    ?>
+        <div class="card-item">
+            <div class="card bg-purple"> <div class="card-header">NO COURSES AVAILABLE</div>
+                <div class="card-image-area">
+                    <img src="https://placehold.co/400x450/dddddd/000000?text=No+Image" class="card-image" alt="No course available">
                 </div>
-
-                <div class="card-item">
-                    <div class="card bg-purple">
-                        <div class="card-header">HUMANITIES & SCIENCES</div>
-                        <div class="card-image-area">
-                            <img src="https://placehold.co/400x450/6f42c1/ffffff?text=Humanities" class="card-image" alt="Student in Lab">
-                        </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                The Faculty of Humanities and Sciences strives to develop professionals in the areas of Education, Science, Mathematics and Nursing.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                    </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        There are currently no courses to display. Please check back soon!
+                    </p>
+                    <button class="card-button" disabled>MORE</button>
                 </div>
+            </div>
+        </div>
+    <?php
+    */
+}
 
-
-                <div class="card-item">
-                    <div class="card bg-blue">
-                        <div class="card-header">ENGINEERING</div>
-                        <div class="card-image-area">
-                            <img src="https://placehold.co/400x450/0dcaf0/ffffff?text=Engineering" class="card-image" alt="Engineering students">
-                        </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                The faculty offers accredited degree programmes in a wide range of engineering disciplines.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                    </div>
-                </div>
-
-
-                <div class="card-item">
-                    <div class="card bg-teal">
-                        <div class="card-header">COMPUTING</div>
-                        <div class="card-image-area">
-                            <img src="https://placehold.co/400x450/20c997/ffffff?text=Computing" class="card-image" alt="Coding on screen">
-                        </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                The Faculty of Computing is a pioneering faculty in the field of IT education.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                    </div>
-                </div>
-                 <div class="card-item">
-                     <div class="card bg-orange">
-                         <div class="card-header">GRADUATE STUDIES</div>
-                          <div class="card-image-area">
-                             <img src="https://placehold.co/400x450/fd7e14/ffffff?text=Graduate" class="card-image" alt="Graduate Students">
-                         </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                Promoting research and providing study programs that are leading to advanced learning, research and scholarship both within and outside the domain of the country.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                     </div>
-                 </div>
+// If you opened the connection in config.php and it's not closed automatically (e.g., persistent connection or script ends),
+// and you don't need it anymore, you might close it here.
+// Typically, connections are closed automatically when the script finishes execution if they are not persistent.
+// if (isset($con)) { $con->close(); } // Assuming $con is your connection variable
+?>
 
                
-                 
-
-                 <div class="card-item">
-                    <div class="card bg-indigo">
-                        <div class="card-header">ARCHITECTURE</div>
-                         <div class="card-image-area">
-                             <img src="https://placehold.co/400x450/6610f2/ffffff?text=Architecture" class="card-image" alt="Architecture Student/Building">
-                         </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                This professional pathway is ideal for creative people with sensitivity, imagination and ability to appreciate the technical aspects of Building Construction.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                    </div>
-                </div>
-
-
-
-                <div class="card-item">
-                    <div class="card bg-indigo">
-                        <div class="card-header">ghghg</div>
-                         <div class="card-image-area">
-                             <img src="https://placehold.co/400x450/6610f2/ffffff?text=Architecture" class="card-image" alt="Architecture Student/Building">
-                         </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                This professional pathway is ideal for creative people with sensitivity, imagination and ability to appreciate the technical aspects of Building Construction.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                    </div>
-                </div>
-
-
-
-                <div class="card-item">
-                    <div class="card bg-indigo">
-                        <div class="card-header">erere</div>
-                         <div class="card-image-area">
-                             <img src="https://placehold.co/400x450/6610f2/ffffff?text=Architecture" class="card-image" alt="Architecture Student/Building">
-                         </div>
-                         <div class="card-body">
-                            <p class="card-text">
-                                This professional pathway is ideal for creative people with sensitivity, imagination and ability to appreciate the technical aspects of Building Construction.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                    </div>
-                </div>
-
-                 <div class="card-item">
-                     <div class="card bg-green">
-                         <div class="card-header">HOSPITALITY & CULINARY</div>
-                          <div class="card-image-area">
-                             <img src="https://placehold.co/400x450/198754/ffffff?text=Hospitality" class="card-image" alt="Chef/Hospitality Staff">
-                         </div>
-                          <div class="card-body">
-                            <p class="card-text">
-                                The William Angliss Institute @SLIIT is a joint venture between William Angliss Institute, Melbourne and is based in the SLIIT campus, Malabe.
-                            </p>
-                            <button class="card-button">MORE</button>
-                         </div>
-                     </div>
-                 </div>
                  </div>
              </div>
          <button id="prev-btn" class="slider-btn" title="Previous">&#9664;</button>

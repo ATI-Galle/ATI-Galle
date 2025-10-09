@@ -3,6 +3,8 @@
 
 include ('include/config.php');
 
+error_reporting(0);
+
 ?>
 
 
@@ -102,26 +104,24 @@ drift.load('cszcvrhysx35');
     ?>
   
                                <li><img src="img/all-icon/map.png" alt="icon"><span><?php echo htmlentities($row['Contact_Information']);?></span></li>
-                               <li><img src="img/all-icon/email.png" alt="icon"><span>info@myproject.x10.bz</span></li>
+                               <li><img src="img/all-icon/email.png" alt="icon"><span>info@atigalle.x10.bz</span></li>
                                <?php }?>   </ul>
                        </div>
                    </div>
                    <div class="col-lg-6">
-                       <div class="header-opening-time text-lg-right text-center">
-                           <p>Opening Hours : Monday to Saturay - 8 Am to 5 Pm</p>
-                       </div>
+                       
                    </div>
                </div> <!-- row -->
            </div> <!-- container -->
        </div> <!-- header top -->
        
-       <div class="header-logo-support pt-30 pb-30">
+       <div class="header-logo-support pt-10 pb-10">
            <div class="container">
                <div class="row">
                    <div class="col-lg-4 col-md-4">
                        <div class="logo">
                            <a href="index.php">
-                               <img src="img/logo/logo2.png" alt="Logo">
+                               <img src="img/logo/logo2.png" alt="Logo" height="70px">
                            </a>
                        </div>
                    </div>
@@ -132,11 +132,11 @@ drift.load('cszcvrhysx35');
                                </div>
                                <div class="cont">
                                    <p>Need Help? call us free</p>
-                                   <span>075 879 41 42 </span>
+                                   <span> 091 224 617 9 </span>
                                </div>
                            </div>
                            <div class="button float-left">
-                               <a href="../LMS" class="main-btn">Loging to LMS</a>
+                               <a href="https://lms.sliate.ac.lk/" class="main-btn">Loging to LMS</a>
                            </div>
                        </div>
                    </div>
@@ -144,11 +144,11 @@ drift.load('cszcvrhysx35');
            </div> <!-- container -->
        </div> <!-- header logo support -->
        
-       <div class="navigation">
+       <div class="navigation pt-10 pb-10" >
            <div class="container">
                <div class="row">
                    <div class="col-lg-10 col-md-10 col-sm-9 col-8">
-                       <nav class="navbar navbar-expand-lg">
+                       <nav class="navbar navbar-expand-lg pt-10 pb-10">
                            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                                <span class="icon-bar"></span>
                                <span class="icon-bar"></span>
@@ -170,12 +170,12 @@ drift.load('cszcvrhysx35');
 
 
                                    <li class="nav-item">
-                                       <a class="" href="#teachers">Teachers </a>
+                                       <a class="" href="#course">Courses </a>
                                      
                                    </li>
                                    
                                    <li class="nav-item">
-                                       <a class="" href="#syllabus">Syllabus </a>
+                                       <a class="" href="#staff">Staff </a>
                                      
                                    </li>
                                    
@@ -185,7 +185,19 @@ drift.load('cszcvrhysx35');
                                    </li>
                                    
                                    <li class="nav-item">
-                                       <a class="" href="#contact">Contact </a>
+                                       <a class="" href="#event">Events </a>
+                                     
+                                   </li>
+
+                                   <li class="nav-item">
+                                       <a class="" href="#review">Reviews </a>
+                                     
+                                   </li>
+
+                                   
+
+                                   <li class="nav-item">
+                                       <a class="" href="#contact">Contact Us </a>
                                      
                                    </li>
                                </ul>

@@ -7,14 +7,14 @@
                     <div class="col-lg-4 col-md-6">
                         <div class="footer-about mt-40">
                             <div class="logo">
-                                <a href="#"><img src="images/logo-2.png" alt="Logo"></a>
+                                <a href="#"><img src="img/logo/logo2.png" alt="Logo"></a>
                             </div>
                             <p>Gravida nibh vel velit auctor aliquetn quibibendum auci elit cons equat ipsutis sem nibh id elit. Duis sed odio sit amet nibh vulputate.</p>
                             <ul class="mt-20">
-                                <li><a href="#"><i class="fa fa-facebook-f"></i></a></li>
-                                <li><a href="#"><i class="fa fa-twitter"></i></a></li>
-                                <li><a href="#"><i class="fa fa-google-plus"></i></a></li>
-                                <li><a href="#"><i class="fa fa-instagram"></i></a></li>
+                                <li><a href="#"><i class="fas fa-facebook"></i></a></li>
+                                <li><a href="#"><i class="fas fa-twitter"></i></a></li>
+                                <li><a href="#"><i class="fas fa-google-plus"></i></a></li>
+                                <li><a href="#"><i class="fas fa-instagram"></i></a></li>
                             </ul>
                         </div> <!-- footer about -->
                     </div>
@@ -26,14 +26,14 @@
                             <ul>
                                 <li><a href="index.php"><i class="fa fa-angle-right"></i>Home</a></li>
                                 <li><a href="#about"><i class="fa fa-angle-right"></i>About us</a></li>
-                                <li><a href="#"><i class="fa fa-angle-right"></i>Courses</a></li>
+                                <li><a href="#course"><i class="fa fa-angle-right"></i>Courses</a></li>
                                 <li><a href="#news"><i class="fa fa-angle-right"></i>News</a></li>
-                                <li><a href="#"><i class="fa fa-angle-right"></i>Event</a></li>
+                                <li><a href="#event"><i class="fa fa-angle-right"></i>Event</a></li>
                             </ul>
                             <ul>
-                                <li><a href="#"><i class="fa fa-angle-right"></i>Gallery</a></li>
-                                <li><a href="#syllabus"><i class="fa fa-angle-right"></i>Syllabus</a></li>
-                                <li><a href="#teachers"><i class="fa fa-angle-right"></i>Teachers</a></li>
+                                <li><a href="#event"><i class="fa fa-angle-right"></i>Gallery</a></li>
+                                <li><a href="#course"><i class="fa fa-angle-right"></i>Syllabus</a></li>
+                                <li><a href="#staff"><i class="fa fa-angle-right"></i>Staff</a></li>
                                 <li><a href="#"><i class="fa fa-angle-right"></i>Support</a></li>
                                 <li><a href="#contact"><i class="fa fa-angle-right"></i>Contact</a></li>
                             </ul>
@@ -49,7 +49,6 @@
                                 <li><a href="#"><i class="fa fa-angle-right"></i>Privacy</a></li>
                                 <li><a href="#"><i class="fa fa-angle-right"></i>Policy</a></li>
                                 <li><a href="#"><i class="fa fa-angle-right"></i>Support</a></li>
-                                <li><a href="#"><i class="fa fa-angle-right"></i>Documentation</a></li>
                             </ul>
                         </div> <!-- support -->
                     </div>
@@ -80,7 +79,7 @@
                                         <i class="fa fa-envelope-o"></i>
                                     </div>
                                     <div class="cont">
-                                        <p>info@myproject.x10.bz</p>
+                                        <p>info@atigalle.x10.bz</p>
                                     </div>
                                 </li>
                             </ul>
@@ -95,7 +94,7 @@
                 <div class="row">
                     <div class="col-md-8">
                         <div class="copyright text-md-left text-center pt-15">
-                            <p><a target="_blank" href="http://manonetwork.eu.org/">visit </a> </p>
+                            <p><a target="_blank" href="#">visit </a> </p>
                         </div>
                     </div>
                     <div class="col-md-4">
