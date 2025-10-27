@@ -21,11 +21,11 @@
     <section id="slider-part" class="slider-active">
 
     <?php
-    $sql = mysqli_query($con, "select * from slider"); // Select all slider items
+    $sql = mysqli_query($con, "select * from slider where status='1' ORDER BY updated_at ASC"); // Select all slider items
     while ($row = mysqli_fetch_array($sql)) {
         ?>
 
-        <div class="single-slider bg_cover pt-150" style="background-image: url(admin/<?php echo $row['simg']; ?>); height:550px; margin-bottom:30px;" data-overlay="4">
+        <div class="single-slider bg_cover pt-150" style="background-image: url(admin/<?php echo $row['simg']; ?>); height:600px; margin-bottom:30px;" data-overlay="4">
             <div class="container">
                 <div class="row">
                     <div class="col-xl-7 col-lg-9">

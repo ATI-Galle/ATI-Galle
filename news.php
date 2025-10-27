@@ -313,17 +313,18 @@ if ($newsId !== null) {
     </div>
 
     <aside class="sidebar">
-        <div class="widget">
+           <div class="widget">
             <h3>Follow Us</h3>
             <ul class="socials">
-                <li class="facebook">📘 12,345 Fans</li>
-                <li class="twitter">🐦 12,345 Followers</li>
+                <li class="facebook">📘 32,000 Followers</li>
                 <li class="linkedin">🔗 12,345 Connects</li>
-                <li class="instagram">📸 12,345 Followers</li>
-                <li class="youtube">▶️ 12,345 Subscribers</li>
-                <li class="vimeo">🎞️ 12,345 Followers</li>
+                <li class="youtube">▶️ 9,700 Subscribers</li>
             </ul>
         </div>
+
+
+
+     
 
         <div class="widget trending">
             <h3>Trending News</h3>
@@ -359,7 +360,17 @@ if ($newsId !== null) {
         </div>
     </aside>
 </div>
+  <!--links are not clicble solved by script-->
 
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // Your live search javascript is here...
+        });
+    </script>
 <?php
 // Assuming include/footer.php closes the HTML document and includes footer content
 include_once("include/footer.php");

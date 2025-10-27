@@ -283,8 +283,8 @@
 
             <div class="vice-chancellor-info">
                 <h2>Director</h2>
-                <img src="img/staff/def.png" alt="Vice Chancellor" class="vc-image"> <div class="vc-name">Mr. S.Ramanayake</div>
-                <div class="vc-title">VSV, USP, psc, MMaritimePol, BSc(DS)</div>
+                <img src="img/staff/Dire.jpeg" alt="Director Image" class="vc-image"> <div class="vc-name">Mr. Thamara Waidyarathne</div>
+                <div class="vc-title">MSc (IT), BSc (IT)</div>
             </div>
         </div>
 

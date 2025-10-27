@@ -8,21 +8,20 @@
     <style>
         body {
             margin: 0;
-            font-family: sans-serif; /* Or your preferred font */
-            background-color: #f8f8f8; /* Light background color */
+            font-family: sans-serif;
+            background-color: #f8f8f8;
         }
 
         .staff-section-container {
             position: relative;
             width: 100%;
-            max-width: 1200px; /* Adjust as needed */
-            margin: 40px auto; /* Center the section */
-            overflow: hidden; /* Hide parts of cards outside the container */
-            padding: 0 20px; /* Add padding for arrows on the sides */
+            max-width: 1200px;
+            margin: 40px auto;
+            overflow: hidden;
+            padding: 0 20px;
             box-sizing: border-box;
         }
 
-         /* Section Title (Optional, but good for context) */
         .section-title {
             text-align: center;
             font-size: 2em;
@@ -33,74 +32,68 @@
 
 
         .cards-wrapper {
-            overflow: hidden; /* Crucial for horizontal scrolling */
+            overflow: hidden;
         }
 
         .staff-cards-container {
             display: flex;
-            /* gap: 20px; Remove gap here and use margin-right on card for easier JS calculation */
-            scroll-behavior: smooth; /* Smooth scrolling effect */
-            overflow-x: auto; /* Enable horizontal scrolling */
-            scrollbar-width: none; /* Hide scrollbar for Firefox */
-            -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
-             padding-bottom: 15px; /* Add padding in case of scrollbar space issues */
+            scroll-behavior: smooth;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-bottom: 15px;
         }
 
         .staff-cards-container::-webkit-scrollbar {
-            display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+            display: none;
         }
 
         .staff-card {
-            flex: 0 0 auto; /* Prevent shrinking, allow basis based on content */
-            width: 280px; /* Adjust card width as needed */
-            height: 400px; /* Adjust card height as needed */
-            margin-right: 20px; /* Space between cards */
+            flex: 0 0 auto;
+            width: 280px;
+            height: 400px;
+            margin-right: 20px;
             background-size: cover;
             background-position: center;
             color: white;
             position: relative;
-            display: flex; /* Use flexbox for stacking title and overlay */
-            flex-direction: column; /* Stack items vertically */
-            border-radius: 10px; /* Rounded corners */
-            overflow: hidden; /* Hide content that overflows card bounds */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+            display: flex;
+            flex-direction: column;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             cursor: pointer;
         }
 
         .staff-card:last-child {
-            margin-right: 0; /* No margin on the last card */
+            margin-right: 0;
         }
 
-        /* --- Styling for the title bar --- */
         .card-title-bar {
-            height: 40px; /* Height of the color bar */
+            height: 40px;
             display: flex;
-            justify-content: center; /* Center text horizontally */
-            align-items: center; /* Center text vertically */
+            justify-content: center;
+            align-items: center;
             font-weight: bold;
             color: white;
             padding: 0 10px;
             box-sizing: border-box;
-            flex-shrink: 0; /* Prevent the title bar from shrinking */
+            flex-shrink: 0;
             text-align: center;
-            background-color: #673ab7; /* Example color - adjust as needed */
+            background-color: #673ab7;
             font-size: 1.1em;
         }
 
-        /* You could add classes here if you want different colors for different cards */
-        /* .staff-card.director .card-title-bar { background-color: #1a237e; } */
-
-
         .card-overlay {
-            position: absolute; /* Keep absolute to cover the background image below the title bar */
-            top: 40px; /* Start below the title bar (match title bar height) */
+            position: absolute;
+            top: 40px;
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.2)); /* Dark gradient from bottom */
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(255, 255, 255, 0));
             display: flex;
             flex-direction: column;
-            justify-content: flex-end; /* Align content to the bottom within the overlay */
+            justify-content: flex-end;
             padding: 20px;
         }
 
@@ -108,10 +101,8 @@
         .card-content {
             position: relative;
             z-index: 1;
-            /* Adjust spacing within the overlay */
         }
 
-        /* Styling for Staff Details */
         .staff-name {
              font-size: 1.3em;
              font-weight: bold;
@@ -119,38 +110,34 @@
              margin-bottom: 5px;
         }
 
-         .staff-qualifications {
+        .staff-qualifications {
              font-size: 0.9em;
              margin-top: 0;
              margin-bottom: 5px;
-             opacity: 0.9; /* Slightly less prominent */
-         }
+             opacity: 0.9;
+        }
 
          .staff-position {
              font-size: 0.9em;
              margin-top: 0;
-             margin-bottom: 15px; /* Space before the button */
+             margin-bottom: 15px;
              opacity: 0.9;
-         }
+        }
 
-
-        .more-button {
-            background-color: rgba(255, 255, 255, 0.2); /* Semi-transparent white */
-            border: 2px solid white;
+        .cid-label {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid white;
             color: white;
-            padding: 8px 15px; /* Adjust padding */
-            font-size: 0.9em; /* Adjust font size */
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            align-self: flex-start; /* Align button to the left */
-            margin-top: auto; /* Push the button to the bottom if content is shorter */
+            padding: 8px 15px;
+            font-size: 0.9em;
+            align-self: flex-start;
+            border-radius: 5px;
+            margin-top: auto;
+            display: inline-block;
+            text-align: center;
+            font-weight: bold;
         }
 
-        .more-button:hover {
-            background-color: rgba(255, 255, 255, 0.4);
-        }
-
-        /* Navigation Arrows */
         .nav-arrow {
             position: absolute;
             top: 50%;
@@ -160,10 +147,10 @@
             border: none;
             padding: 10px;
             cursor: pointer;
-            z-index: 10; /* Ensure arrows are above cards */
+            z-index: 10;
             font-size: 1.5em;
-            border-radius: 50%; /* Circular arrows */
-            transition: background-color 0.3s ease, opacity 0.3s ease; /* Add opacity transition */
+            border-radius: 50%;
+            transition: background-color 0.3s ease, opacity 0.3s ease;
         }
 
         .nav-arrow:hover {
@@ -172,53 +159,51 @@
 
 
         .left-arrow {
-            left: 0; /* Position at the very left of the container padding */
+            left: 0;
         }
 
         .right-arrow {
-            right: 0; /* Position at the very right of the container padding */
+            right: 0;
         }
 
-        /* CSS to hide arrows when needed */
         .nav-arrow.hidden {
-            opacity: 0; /* Fade out the arrow */
-            pointer-events: none; /* Prevent clicking when hidden */
+            opacity: 0;
+            pointer-events: none;
         }
 
 
-        /* Basic Responsiveness */
         @media (max-width: 768px) {
-             .staff-section-container {
+            .staff-section-container {
                 margin: 20px auto;
-                padding: 0 10px; /* Adjust padding */
-             }
+                padding: 0 10px;
+            }
 
             .staff-card {
-                width: 250px; /* Adjust card width */
-                height: 350px; /* Adjust card height */
-                margin-right: 15px; /* Adjust space */
+                width: 250px;
+                height: 350px;
+                margin-right: 15px;
             }
 
             .card-title-bar {
-                 height: 35px;
-                 font-size: 1em;
+                height: 35px;
+                font-size: 1em;
             }
 
-             .card-overlay {
-                 top: 35px; /* Match title bar height */
-                 padding: 15px;
-             }
+            .card-overlay {
+                top: 35px;
+                padding: 15px;
+            }
 
             .staff-name {
-                 font-size: 1.1em;
+                font-size: 1.1em;
             }
 
-             .staff-qualifications,
-             .staff-position {
-                 font-size: 0.8em;
-             }
-
-            .more-button {
+            .staff-qualifications,
+            .staff-position {
+                font-size: 0.8em;
+            }
+            
+            .cid-label {
                 padding: 6px 12px;
                 font-size: 0.8em;
             }
@@ -233,108 +218,124 @@
 <body>
 
     <section class="staff-section-container" id="staff">
-         <h2 class="section-title">Our Staff</h2> 
-         <br><br>
+        <h2 class="section-title">Our Staff</h2>
+        <br><br>
+        <button class="nav-arrow left-arrow" aria-label="Scroll Left"><i class="fas fa-chevron-left"></i></button>
+        <button class="nav-arrow right-arrow" aria-label="Scroll Right"><i class="fas fa-chevron-right"></i></button>
+        
         <div class="cards-wrapper">
             <div class="staff-cards-container">
-               
+                
+        <?php
+        include_once ("config.php");
 
-            <?php
-// 1. Include your database configuration and connection file.
-include_once ("config.php");
+        $position_mapping = [
+            'Dire'  => ['text' => 'Director'],
+            'Regi'  => ['text' => 'Registrar'],
+            'AReg'  => ['text' => 'Asst. Registrar'],
+            'Acct'  => ['text' => 'Accountant'],
+            'Legal' => ['text' => 'Legal Officer'],
+            'Audit' => ['text' => 'Internal Auditor'],
+            'HOD'   => ['text' => 'Head of Department'],
+            'SLect' => ['text' => 'Senior Lecturer'],
+            'Lect'  => ['text' => 'Lecturer'],
+            'Lib'   => ['text' => 'Librarian'],
+            'Demo'  => ['text' => 'Demonstrator'],
+            'Offi'  => ['text' => 'Office Staff'],
+        ];
 
-// --- PHP Logic to Fetch Staff Data ---
+        $staffMembers = [];
+        $sql = "SELECT stid, sname, spos, cid, sed, status, created_at, stimg, updated_at FROM staff WHERE status = '1'";
 
-$staffMembers = []; // Initialize an empty array to store staff data
-
-// 2. Prepare the SQL query to select staff data.
-$sql = "SELECT stid, sname, spos, sed, status, created_at, stimg, updated_at FROM staff WHERE status = '1'"; // Assuming status '1' means active
-
-// 3. Execute the query and fetch the data (MySQLi example)
-if (isset($con)) {
-    $result = $con->query($sql);
-
-    if ($result) {
-        if ($result->num_rows > 0) {
-            // Fetch all results into the $staffMembers array
-            while($row = $result->fetch_assoc()) {
-                $staffMembers[] = $row;
+        if (isset($con)) {
+            $result = $con->query($sql);
+            if ($result && $result->num_rows > 0) {
+                while($row = $result->fetch_assoc()) {
+                    $staffMembers[] = $row;
+                }
             }
         } else {
-            // No staff members found
-            echo "<p>No staff members found.</p>";
+            echo "Database connection variable (\$con) not found.";
+            exit;
         }
-        // Optional: $result->free();
-    } else {
-        // Query failed
-        echo "Error executing query: " . $con->error;
-    }
-    // Optional: $con->close();
-} else {
-    echo "Database connection variable (\$con) not found. Please check your config.php.";
-    exit;
-}
 
-// --- HTML Block with PHP Loop to Display Staff Cards ---
+        // --- NEW SORTING LOGIC STARTS HERE ---
+        if (!empty($staffMembers)) {
+            // 1. Define the desired order for positions. Lower numbers come first.
+            $position_order = [
+                'Dire'  => 1,
+                'Regi'  => 2,
+                'HOD'   => 3,
+                'SLect' => 4,
+                'Lect'  => 5,
+                'Demo'  => 6
+            ];
 
-if (!empty($staffMembers)) {
-    foreach ($staffMembers as $staff) {
-        // Sanitize data before outputting
-        $sname = htmlspecialchars($staff['sname']);
-        $spos = htmlspecialchars($staff['spos']);
-        $sed = htmlspecialchars($staff['sed']);
-        $stimg_url = htmlspecialchars($staff['stimg']); // Assuming stimg contains the image file name
+            // 2. Sort the $staffMembers array using our custom order.
+            usort($staffMembers, function($a, $b) use ($position_order) {
+                // Assign a high number (99) to any position not in our custom list, so they go to the end.
+                $order_a = $position_order[$a['spos']] ?? 99;
+                $order_b = $position_order[$b['spos']] ?? 99;
 
-        // Construct the full image path
-        $imagePath = 'admin/' . $stimg_url;
-?>
-    <div class="staff-card" style="background-image: url('<?php echo $imagePath; ?>');">
-        <div class="card-title-bar">
-            <?php echo $spos; // Display staff position in the title bar ?>
-        </div>
-        <div class="card-overlay">
-            <div class="card-content">
-                <div class="staff-name"><?php echo $sname; // Display staff name ?></div>
-                <div class="staff-qualifications"><?php echo $sed; // Display staff education ?></div>
-                <div class="staff-position"><?php echo $spos; // Display staff position again in the content ?></div>
-                <button class="more-button">MORE</button>
-            </div>
-        </div>
-    </div>
-<?php
-    } // End of foreach loop
-} else {
-    // Display a default card or message if no staff data is available
-    ?>
-    <div class="staff-card" style="background-image: url('img/staff/default.jpg');">
-        <div class="card-title-bar">
-            NO STAFF
-        </div>
-        <div class="card-overlay">
-            <div class="card-content">
-                <div class="staff-name">No Staff Available</div>
-                <div class="staff-qualifications"></div>
-                <div class="staff-position"></div>
-                <button class="more-button" disabled>MORE</button>
-            </div>
-        </div>
-    </div>
-    <?php
-}
+                // Compare the two order numbers.
+                return $order_a <=> $order_b;
+            });
+        }
+        // --- NEW SORTING LOGIC ENDS HERE ---
 
-// Optional: if (isset($con)) { $con->close(); }
-?>
-
+        if (!empty($staffMembers)) {
+            foreach ($staffMembers as $staff) {
+                $sname = htmlspecialchars($staff['sname']);
+                $sed = htmlspecialchars($staff['sed']);
+                $stimg_url = htmlspecialchars($staff['stimg']);
                 
-              
-             
+                $position_code = $staff['spos'];
+                $display_position = isset($position_mapping[$position_code]) ? $position_mapping[$position_code]['text'] : $position_code;
+                $spos_full_text = htmlspecialchars($display_position);
 
+                $imagePath = 'admin/' . $stimg_url;
+        ?>
+                <div class="staff-card" style="background-image: url('<?php echo $imagePath; ?>');">
+                    <div class="card-title-bar">
+                        <?php echo $spos_full_text; ?>
+                    </div>
+                    <div class="card-overlay">
+                        <div class="card-content">
+                            <div class="staff-name"><?php echo $sname; ?></div>
+                            <div class="staff-qualifications"><?php echo $sed; ?></div>
+                            <div class="staff-position"><?php echo $spos_full_text; ?></div>
 
+                            <?php
+                                $positions_to_skip_label = ['Dire', 'Regi', 'Lib']; 
+                                
+                                if (!in_array($staff['spos'], $positions_to_skip_label)) {
+                                    $cid_display = !empty($staff['cid']) ? htmlspecialchars($staff['cid']) : 'Demo';
+                                    echo '<div class="cid-label">' . $cid_display . '</div>';
+                                }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+        <?php
+            } // End of foreach loop
+        } else {
+        ?>
+            <div class="staff-card" style="background-image: url('img/staff/default.jpg');">
+                <div class="card-title-bar">NO STAFF</div>
+                <div class="card-overlay">
+                    <div class="card-content">
+                        <div class="staff-name">No Staff Available</div>
+                    </div>
+                </div>
+            </div>
+            <?php
+        }
+        ?>
             </div>
         </div>
 
-        <div style="float:right;">
-            <a href="staff.php">see more</a>
+        <div style="float:right; margin-top: 15px;">
+             <a href="staff.php">See More...</a>
         </div>
     </section>
 
@@ -344,7 +345,8 @@ if (!empty($staffMembers)) {
             const leftArrow = document.querySelector('.left-arrow');
             const rightArrow = document.querySelector('.right-arrow');
 
-            // Function to scroll the container
+            if (!cardsContainer || !leftArrow || !rightArrow) return;
+
             const scrollContainer = (distance) => {
                 cardsContainer.scrollBy({
                     left: distance,
@@ -352,50 +354,39 @@ if (!empty($staffMembers)) {
                 });
             };
 
-            // Event listeners for arrows
             leftArrow.addEventListener('click', () => {
-                // Calculate scroll distance (width of one card + its right margin)
-                 const card = document.querySelector('.staff-card');
-                 if (!card) return; // Prevent error if no cards exist
-                 const cardWidth = card.getBoundingClientRect().width;
-                 const cardMarginRight = parseInt(getComputedStyle(card).marginRight);
-                 const scrollDistance = cardWidth + cardMarginRight;
-
-                scrollContainer(-scrollDistance); // Scroll left
+                const scrollDistance = cardsContainer.clientWidth * 0.8;
+                scrollContainer(-scrollDistance);
             });
 
             rightArrow.addEventListener('click', () => {
-                 // Calculate scroll distance
-                 const card = document.querySelector('.staff-card');
-                 if (!card) return; // Prevent error if no cards exist
-                 const cardWidth = card.getBoundingClientRect().width;
-                 const cardMarginRight = parseInt(getComputedStyle(card).marginRight);
-                 const scrollDistance = cardWidth + cardMarginRight;
-
-                scrollContainer(scrollDistance); // Scroll right
+                const scrollDistance = cardsContainer.clientWidth * 0.8;
+                scrollContainer(scrollDistance);
             });
 
-            // Logic to hide/show arrows based on scroll position
             const toggleArrows = () => {
-                 // Check if scrolled to the beginning or end
-                 // Add a small tolerance (e.g., 1px) for potential subpixel issues
-                 const isAtStart = cardsContainer.scrollLeft <= 1;
-                 const isAtEnd = cardsContainer.scrollLeft + cardsContainer.clientWidth >= cardsContainer.scrollWidth - 1;
+                const tolerance = 2;
+                const isAtStart = cardsContainer.scrollLeft <= tolerance;
+                const isAtEnd = cardsContainer.scrollLeft + cardsContainer.clientWidth >= cardsContainer.scrollWidth - tolerance;
+                
+                const isScrollable = cardsContainer.scrollWidth > cardsContainer.clientWidth;
+                if (!isScrollable) {
+                    leftArrow.classList.add('hidden');
+                    rightArrow.classList.add('hidden');
+                    return;
+                }
 
-                 leftArrow.classList.toggle('hidden', isAtStart);
-                 rightArrow.classList.toggle('hidden', isAtEnd);
+                leftArrow.classList.toggle('hidden', isAtStart);
+                rightArrow.classList.toggle('hidden', isAtEnd);
             };
 
-            // Listen for scroll events on the container to update arrow visibility
             cardsContainer.addEventListener('scroll', toggleArrows);
-
-            // Also check arrow visibility when the window is resized (in case cards per view changes)
             window.addEventListener('resize', toggleArrows);
-
-            // Initial check on load to set the correct arrow visibility
             toggleArrows();
         });
     </script>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

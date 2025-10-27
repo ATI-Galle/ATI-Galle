@@ -473,174 +473,202 @@ p {
 .support-button .button{
     margin-left: 60px;
 }
+/*===== Header Menu (Modern Style) =====*/
 
-/*===== Header Menu =====*/
+.navigation {
+    transition: background-color 0.4s ease-in-out, box-shadow 0.4s ease-in-out;
+}
 
-.navigation{}
-
+/* MODERN: Added "glassmorphism" effect for the sticky header */
 .navigation.sticky {
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	background: #fff;
-	z-index: 999;
-    border-bottom: 1px solid #cecece;
-    -webkit-box-shadow: 0px 0px 191px 0px rgba(0,0,0,0.06);
-    box-shadow: 0px 0px 191px 0px rgba(0,0,0,0.06);
-    -webkit-animation: sticky 2s;
-    animation: sticky 2s;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 999;
+    
+    /* Semi-transparent background is crucial for the blur effect */
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* For Safari */
+    
+    /* Softer, more subtle shadow */
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    
+    animation: stickyFadeIn 0.5s ease-in-out;
 }
 
-@-webkit-keyframes sticky {
-    0%{
-        -webkit-transform: translateY(-100%);
-        transform: translateY(-100%)
+@keyframes stickyFadeIn {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
     }
-    100%{
-        -webkit-transform: translateY(0%);
-        transform: translateY(0%)
-    }
-}
-
-@keyframes sticky {
-    0%{
-        -webkit-transform: translateY(-100%);
-        transform: translateY(-100%)
-    }
-    100%{
-        -webkit-transform: translateY(0%);
-        transform: translateY(0%)
+    to {
+        transform: translateY(0);
+        opacity: 1;
     }
 }
 
-.navigation .navbar{
+.navigation .navbar {
     padding: 0;
 }
 
-.navigation .navbar .navbar-nav{}
-.navigation .navbar .navbar-nav li{
-    margin-right: 40px;
+.navigation .navbar .navbar-nav li {
+    margin: 0 15px; /* MODERN: Slightly reduced margin for a tighter look */
     position: relative;
 }
-.navigation .navbar .navbar-nav li:last-child{
-    margin-right: 0;
-}
 
-.navigation .navbar .navbar-nav li a{
-    font-size: 14px;
+.navigation .navbar .navbar-nav li a {
+    font-size: 14px; /* MODERN: Slightly larger, more readable font size */
     font-family: 'Montserrat', sans-serif;
-    font-weight: 700;
+    font-weight: 600; /* MODERN: Slightly lighter weight for a cleaner look */
     color: #07294d;
     text-transform: uppercase;
-    -webkit-transition: all 0.4s linear;
-    transition: all 0.4s linear;
-    padding: 25px 0;
+    padding: 30px 5px; /* MODERN: More vertical padding for breathing room */
+    position: relative;
+    transition: color 0.3s ease-in-out;
 }
 
-.navigation .navbar .navbar-nav > li > a.active,
-.navigation .navbar .navbar-nav > li > a:hover{
-    color: #ffc600;
-}
-
-.navigation .navbar .navbar-nav li .sub-menu{
+/* MODERN: Elegant underline hover effect */
+.navigation .navbar .navbar-nav > li > a::after {
+    content: '';
     position: absolute;
-    top: 110%;
+    width: 0%;
+    height: 2px;
+    bottom: 20px; /* Position the line below the text */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ffc600;
+    transition: width 0.3s ease-in-out;
+}
+
+.navigation .navbar .navbar-nav > li > a:hover,
+.navigation .navbar .navbar-nav > li > a.active {
+    color: #07294d; /* Keep original color on hover, let the line be the indicator */
+}
+
+.navigation .navbar .navbar-nav > li > a:hover::after,
+.navigation .navbar .navbar-nav > li > a.active::after {
+    width: 100%;
+}
+
+
+/* MODERN: Refined dropdown menu style */
+.navigation .navbar .navbar-nav li .sub-menu {
+    position: absolute;
+    top: 120%; /* Start slightly lower for animation */
     left: 0;
-    background-color: #07294d;
-    width: 200px;
+    background-color: #fff;
+    width: 220px;
     opacity: 0;
     visibility: hidden;
-    -webkit-transition: all 0.4s linear;
-    transition: all 0.4s linear;
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08); /* Soft shadow */
+    border: 1px solid #f0f0f0;
+    transform: translateY(10px);
+    transition: all 0.3s ease-in-out;
     z-index: 99;
 }
-.navigation .navbar .navbar-nav li:hover .sub-menu{
+
+.navigation .navbar .navbar-nav li:hover .sub-menu {
     opacity: 1;
     visibility: visible;
     top: 100%;
+    transform: translateY(0);
 }
 
-.navigation .navbar .navbar-nav li .sub-menu li{
-    margin-right: 0;
+.navigation .navbar .navbar-nav li .sub-menu li {
+    margin: 0;
 }
-.navigation .navbar .navbar-nav li .sub-menu li a{
-    padding: 10px 15px;
+
+.navigation .navbar .navbar-nav li .sub-menu li a {
+    padding: 12px 20px;
     display: block;
-    border-bottom: 1px solid rgba(255, 198, 0, 0.5);
-    color: #fff;
-}
-.navigation .navbar .navbar-nav li .sub-menu li a.active,
-.navigation .navbar .navbar-nav li .sub-menu li a:hover{
-    padding-left: 20px;
-    color: #ffc600;
+    color: #07294d;
+    font-weight: 500;
+    text-transform: none; /* Sub-menu items usually aren't uppercase */
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.3s ease-in-out;
 }
 
-.sub-nav-toggler{
-    display: none;
-}
-
-.navigation .navbar .navbar-nav li .sub-menu li:last-child a{
+.navigation .navbar .navbar-nav li .sub-menu li:last-child a {
     border-bottom: 0;
 }
 
+.navigation .navbar .navbar-nav li .sub-menu li a:hover,
+.navigation .navbar .navbar-nav li .sub-menu li a.active {
+    background-color: #f8f8f8;
+    color: #ffc600;
+    padding-left: 25px; /* Indent on hover */
+}
+
+
+/* --- Mobile Menu Toggler (Refined) --- */
+.sub-nav-toggler {
+    display: none;
+}
+
 .navbar .navbar-toggler {
-	padding: 3px 8px;
-	margin: 18px 0;
-     -webkit-transform: all 0.4s linear;
-    transform: all 0.4s linear;
+    padding: 3px 8px;
+    margin: 18px 0;
+    transition: transform 0.4s ease-in-out;
 }
 
 .navbar .navbar-toggler .icon-bar {
-	width: 30px;
-	height: 2px;
-	background-color: #07294d;
-	display: block;
-	margin: 5px 0;
+    width: 30px;
+    height: 2px;
+    background-color: #07294d;
+    display: block;
+    margin: 6px 0; /* Increased margin */
     position: relative;
-     -webkit-transition: all 0.4s linear;
-    transition: all 0.4s linear;
+    transition: all 0.4s ease-in-out;
 }
 
-.navbar .navbar-toggler.active .icon-bar:nth-of-type(1){
-    -webkit-transform: rotate(46deg);
-    transform: rotate(46deg);
-    top: 7px;
+.navbar .navbar-toggler.active .icon-bar:nth-of-type(1) {
+    transform: rotate(45deg);
+    top: 8px;
 }
-.navbar .navbar-toggler.active .icon-bar:nth-of-type(2){
+.navbar .navbar-toggler.active .icon-bar:nth-of-type(2) {
     opacity: 0;
 }
-.navbar .navbar-toggler.active .icon-bar:nth-of-type(3){
-    -webkit-transform: rotate(134deg);
-    transform: rotate(134deg);
-    top: -7px;
+.navbar .navbar-toggler.active .icon-bar:nth-of-type(3) {
+    transform: rotate(-45deg);
+    top: -8px;
 }
 
-.right-icon{}
-.right-icon ul li{
+
+/* --- Right Icons (Refined) --- */
+.right-icon ul li {
     display: inline-block;
-    margin-right: 17px;
+    margin-left: 20px; /* Use left margin for better spacing */
     padding: 22px 0;
 }
-.right-icon ul li:last-child{
-    margin-right: 0;
-}
 
-.right-icon ul li a{
+.right-icon ul li a {
     font-size: 18px;
     color: #07294d;
     position: relative;
-    padding-right: 7px;
+    transition: transform 0.3s ease-in-out;
+    display: block; /* Make it a block for transform to work well */
 }
-.right-icon ul li a span{
-    font-size: 12px;
-    color: #fff;
+
+/* MODERN: Interactive hover effect */
+.right-icon ul li a:hover {
+    transform: scale(1.1);
+}
+
+.right-icon ul li a span {
+    font-size: 10px;
+    font-weight: 700;
+    color: #07294d;
     background-color: #ffc600;
     border-radius: 50%;
-    padding: 0px 4px;
+    padding: 2px 5px;
     position: absolute;
     top: -5px;
-    right: 0;
+    right: -8px;
+    line-height: 1;
 }
 
 /*===== Index-2 =====*/

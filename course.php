@@ -1,19 +1,30 @@
 <?php
-// Include the header which should handle the database connection and start the HTML document
-include_once("include/header.php");
 
-// Ensure the database connection variable $con is set by the header.php
+// Include the header (Corrected syntax with quotes)
+include_once('include/header.php');
+
+// Database connection check
 if (!isset($con) || $con->connect_error) {
-    // Handle database connection error more robustly
     echo "<div style='color: red; text-align: center; padding: 20px;'>Database connection error: " . ($con->connect_error ?? 'Could not connect') . "</div>";
-    // Optionally include footer and exit, but header should ideally handle fatal errors before outputting body
-    // include_once("include/footer.php"); // Footer would close the body/html tags
-    exit(); // Stop script execution on critical error
+    exit();
+}
+
+// Helper function
+function get_full_position_title($abbr) {
+    $positions = [
+        'Dire' => 'Director',
+        'Regi' => 'Registrar',
+        'HOD'  => 'Head of Department',
+        'SLect'=> 'Senior Lecturer',
+        'Lec'  => 'Lecturer',
+        'Demo' => 'Demonstrator'
+    ];
+    return $positions[$abbr] ?? $abbr;
 }
 
 // Fetch all courses for the sidebar
 $all_courses = [];
-$sql_all_courses = "SELECT cid, cname FROM course ORDER BY cname"; // Order alphabetically
+$sql_all_courses = "SELECT cid, cname FROM course ORDER BY cname";
 $stmt_all_courses = $con->prepare($sql_all_courses);
 if ($stmt_all_courses) {
     $stmt_all_courses->execute();
@@ -22,106 +33,108 @@ if ($stmt_all_courses) {
         $all_courses[] = $row;
     }
     $stmt_all_courses->close();
-} else {
-    // Handle error if prepared statement fails
-    error_log("Error preparing statement for all courses: " . $con->error);
-    // Optionally set a user-facing error message here if fetching courses is critical
 }
 
-// Initialize variables for course data and modules
+// Initialize variables
 $course_data = null;
-$modules_data_by_year_sem = []; // Store modules grouped by year and semester
-
-// Check if cid is present in the URL
-$selected_cid = $_GET['cid'] ?? null; // Use null coalescing operator for cleaner check
+$modules_data_by_year_sem = [];
+$staff_members = [];
+$selected_cid = $_GET['cid'] ?? null;
 
 if ($selected_cid !== null) {
     // Fetch course details
-    $sql_course = "SELECT cid, cname, ctext, cimg FROM course WHERE cid = ?";
+    $sql_course = "SELECT cid, cname, ctext FROM course WHERE cid = ?";
     $stmt_course = $con->prepare($sql_course);
     if ($stmt_course) {
-        $stmt_course->bind_param("s", $selected_cid); // Assuming 'cid' is a string
+        $stmt_course->bind_param("s", $selected_cid);
         $stmt_course->execute();
-        $result_course = $stmt_course->get_result();
-        $course_data = $result_course->fetch_assoc(); // Get the single row
+        $course_data = $stmt_course->get_result()->fetch_assoc();
         $stmt_course->close();
+    }
 
-        // Only proceed to fetch modules if the course was found
-        if ($course_data) {
-            // Fetch ALL module details for the selected course, ordered by year and semester
-            $sql_all_modules = "SELECT module_code, module_title, module_type, credits, status, year, semester FROM modules WHERE cid = ? ORDER BY year, semester, module_code";
-            $stmt_all_modules = $con->prepare($sql_all_modules);
-            if ($stmt_all_modules) {
-                $stmt_all_modules->bind_param("s", $selected_cid); // Assuming 'cid' is a string
-                $stmt_all_modules->execute();
-                $result_all_modules = $stmt_all_modules->get_result();
-
-                // Group modules by Year and Semester
-                while ($module = $result_all_modules->fetch_assoc()) {
-                    $year = $module['year'];
-                    $semester = $module['semester'];
-                    // Create nested arrays if they don't exist
-                    if (!isset($modules_data_by_year_sem[$year])) {
-                        $modules_data_by_year_sem[$year] = [];
-                    }
-                     if (!isset($modules_data_by_year_sem[$year][$semester])) {
-                        $modules_data_by_year_sem[$year][$semester] = [];
-                    }
-                    // Add the module to the correct group
-                    $modules_data_by_year_sem[$year][$semester][] = $module;
-                }
-
-                $result_all_modules->free(); // Free result set
-                $stmt_all_modules->close();
-
-                 // Sort years and semesters numerically
-                 ksort($modules_data_by_year_sem);
-                 foreach ($modules_data_by_year_sem as $year => $semesters) {
-                     ksort($modules_data_by_year_sem[$year]);
-                 }
-
-            } else {
-                 error_log("Error preparing statement for all modules: " . $con->error);
-                 // Optionally set a user-facing error message here
+    if ($course_data) {
+        // Fetch modules
+        $sql_all_modules = "SELECT module_code, module_title, module_type, credits, year, semester FROM modules WHERE cid = ? ORDER BY year, semester, module_code";
+        $stmt_all_modules = $con->prepare($sql_all_modules);
+        if ($stmt_all_modules) {
+            $stmt_all_modules->bind_param("s", $selected_cid);
+            $stmt_all_modules->execute();
+            $result_all_modules = $stmt_all_modules->get_result();
+            while ($module = $result_all_modules->fetch_assoc()) {
+                $year = $module['year'];
+                $semester = $module['semester'];
+                if (!isset($modules_data_by_year_sem[$year])) $modules_data_by_year_sem[$year] = [];
+                if (!isset($modules_data_by_year_sem[$year][$semester])) $modules_data_by_year_sem[$year][$semester] = [];
+                $modules_data_by_year_sem[$year][$semester][] = $module;
             }
+            $stmt_all_modules->close();
+            
+            // Sort the data
+            ksort($modules_data_by_year_sem);
+            foreach ($modules_data_by_year_sem as $year => &$semesters) {
+                ksort($semesters);
+            }
+            // =========================================================
+            //  THE FIX: Unset the reference to prevent data corruption
+            // =========================================================
+            unset($semesters);
+
         }
-    } else {
-        error_log("Error preparing statement for course details: " . $con->error);
-         // Optionally set a user-facing error message here
+
+        // Fetch Staff
+        $sql_staff = "SELECT sname, spos, stimg FROM staff WHERE cid = ? AND status = 1 ORDER BY CASE WHEN spos = 'HOD' THEN 1 ELSE 2 END, sname ASC";
+        $stmt_staff = $con->prepare($sql_staff);
+        if ($stmt_staff) {
+            $stmt_staff->bind_param("s", $selected_cid);
+            $stmt_staff->execute();
+            $result_staff = $stmt_staff->get_result();
+            while ($staff_row = $result_staff->fetch_assoc()) {
+                $staff_members[] = $staff_row;
+            }
+            $stmt_staff->close();
+        }
     }
 }
-
-// The header.php should have already opened the body tag
 ?>
+
     <div class="main-container" id="course">
+        <div class="sidebar">
+            <h2>All Departments</h2>
+            <nav class="department-nav">
+                <ul>
+                    <?php foreach ($all_courses as $course): ?>
+                        <?php $active_class = ($selected_cid == $course['cid']) ? ' class="active"' : ''; ?>
+                        <li><a href="?cid=<?php echo urlencode($course['cid']); ?>"<?php echo $active_class; ?>><?php echo htmlspecialchars($course['cname']); ?></a></li>
+                    <?php endforeach; ?>
+                </ul>
+            </nav>
+        </div>
+
         <div class="main-content">
-            <?php if ($selected_cid !== null): // Display course details and modules only if cid is set ?>
-                <?php if ($course_data): ?>
-                    <h1 align="center"><?php echo htmlspecialchars($course_data['cname']); ?></h1>
-                    <h4 style="margin:5px;">Entry Profile</h4>
+            <?php if ($course_data): ?>
+                <div class="page-header">
+                    <h1><?php echo htmlspecialchars($course_data['cname']); ?></h1>
+                </div>
 
-                    <div class="course-info">
-                        <?php if (!empty($course_data['cimg'])): // Check if image path is not empty ?>
-                        <?php endif; ?>
-                        <p><p><?php echo nl2br($course_data['ctext']); ?></p></p>
+                <div class="content-section">
+                    <h2>Course Overview</h2>
+                    <div class="course-overview-text">
+                        <?php echo $course_data['ctext']; ?>
                     </div>
-
-                    <h4>Subjects and Credits</h4>
-
-                    
-
-                    <?php if (!empty($modules_data_by_year_sem)): ?>
+                </div>
+                
+                <?php if (!empty($modules_data_by_year_sem)): ?>
+                    <div class="content-section">
+                        <h2>Course Structure</h2>
                         <?php foreach ($modules_data_by_year_sem as $year => $semesters): ?>
                             <?php foreach ($semesters as $semester => $modules_list): ?>
-                                <h2>Year <?php echo htmlspecialchars($year); ?> - Semester <?php echo htmlspecialchars($semester); ?></h2>
+                                <h3>Year <?php echo htmlspecialchars($year); ?> - Semester <?php echo htmlspecialchars($semester); ?></h3>
                                 <table class="module-table">
                                     <thead>
                                         <tr>
                                             <th>Module Code</th>
                                             <th>Module Title</th>
-                                            <th>Module Type</th>
                                             <th>Credits</th>
-                                            <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -133,182 +146,268 @@ if ($selected_cid !== null) {
                                             <tr>
                                                 <td><?php echo htmlspecialchars($module['module_code']); ?></td>
                                                 <td><?php echo htmlspecialchars($module['module_title']); ?></td>
-                                                <td><?php echo htmlspecialchars($module['module_type']); ?></td>
                                                 <td><?php echo htmlspecialchars($module['credits']); ?></td>
-                                                <td><?php echo htmlspecialchars($module['status'] == 1 ? 'Active' : 'Inactive'); ?></td> </tr>
+                                            </tr>
                                         <?php endforeach; ?>
-                                        <tr>
-                                            <th colspan="3" style="text-align: right;">TOTAL CREDITS</th>
-                                            <th><?php echo htmlspecialchars($total_credits); ?></th>
-                                            <th></th>
+                                        <tr class="total-row">
+                                            <td colspan="2"><b>Total Semester Credits</b></td>
+                                            <td><b><?php echo htmlspecialchars($total_credits); ?></b></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             <?php endforeach; ?>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                         <?php if ($course_data): // Only show this if course exists but has no modules ?>
-                             <p>No modules found for this course.</p>
-                         <?php endif; ?>
-                    <?php endif; ?>
-
-                <?php else: ?>
-                    <p>Course not found.</p>
+                    </div>
                 <?php endif; ?>
-            <?php else: ?>
-                 <h1>Select a Course</h1>
-                 <p>Please select a course from the list on the right to view its details and modules.</p>
-            <?php endif; ?>
-        </div>
 
-        <div class="sidebar">
-            <h2>Courses</h2>
-            <?php if (!empty($all_courses)): ?>
-                <ul>
-                    <?php foreach ($all_courses as $course): ?>
+                <?php if (!empty($staff_members)): ?>
+                    <div class="content-section">
                         <?php
-                            // Add 'active' class to the link if it's the currently selected course
-                            $active_class = ($selected_cid == $course['cid']) ? ' class="active"' : '';
+                            $hod = null;
+                            $other_staff = [];
+                            foreach ($staff_members as $staff) {
+                                if ($staff['spos'] == 'HOD') {
+                                    $hod = $staff;
+                                } else {
+                                    $other_staff[] = $staff;
+                                }
+                            }
                         ?>
-                        <li><a href="?cid=<?php echo urlencode($course['cid']); ?>"<?php echo $active_class; ?>><?php echo htmlspecialchars($course['cname']); ?></a></li>
-                    <?php endforeach; ?>
-                </ul>
+
+                        <?php if ($hod): ?>
+                            <h2>Head of Department</h2>
+                            <div class="hod-profile">
+                                <img src="<?php echo !empty($hod['stimg']) ? 'admin/'.htmlspecialchars($hod['stimg']) : 'admin/uploads/staff/def.jpg'; ?>" alt="Photo of <?php echo htmlspecialchars($hod['sname']); ?>">
+                                <div class="hod-details">
+                                    <h3><?php echo htmlspecialchars($hod['sname']); ?></h3>
+                                    <p><?php echo htmlspecialchars(get_full_position_title($hod['spos'])); ?></p>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($other_staff)): ?>
+                            <h2 style="margin-top: 40px;">Academic Staff</h2>
+                            <div class="staff-grid">
+                                <?php foreach ($other_staff as $staff): ?>
+                                    <div class="staff-card">
+                                        <img src="<?php echo !empty($staff['stimg']) ? 'admin/'.htmlspecialchars($staff['stimg']) : 'admin/uploads/staff/def.jpg'; ?>" alt="Photo of <?php echo htmlspecialchars($staff['sname']); ?>">
+                                        <div class="staff-card-details">
+                                            <h4><?php echo htmlspecialchars($staff['sname']); ?></h4>
+                                            <p><?php echo htmlspecialchars(get_full_position_title($staff['spos'])); ?></p>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
             <?php else: ?>
-                <p>No courses available.</p>
+                <div class="page-header">
+                    <h1>Welcome</h1>
+                </div>
+                <p>Please select a department from the navigation menu to view its details.</p>
             <?php endif; ?>
         </div>
     </div>
 
     <style>
-        /* Add or adjust CSS as needed */
+        /* --- FONT & GLOBAL STYLES --- */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        :root {
+            --university-blue: #0d47a1;
+            --accent-gold: #ffab00; /* New accent color */
+            --light-blue: #e3f2fd;
+            --dark-text: #212529;
+            --light-text: #6c757d;
+            --border-color: #dee2e6;
+            --background-grey: #f8f9fa;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', sans-serif; /* Changed font */
             margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
+            background-color: var(--background-grey);
+            color: var(--dark-text);
         }
+
+        /* --- LAYOUT --- */
         .main-container {
-            display: flex; /* Use flexbox for layout */
-            max-width: 1200px; /* Adjust max-width as needed */
-            margin: 20px auto;
+            display: flex;
+            max-width: 1400px;
+            margin: 30px auto;
             background-color: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px; /* Added some border-radius */
-            overflow: hidden; /* Ensures child elements respect border-radius */
+            border-radius: 8px; /* Added rounded corners */
+            box-shadow: 0 4px 25px rgba(0,0,0,0.07); /* Added shadow */
+            overflow: hidden; /* Important for border-radius */
         }
-        .main-content {
-            flex-grow: 1; /* Allow main content to take up available space */
-            padding: 20px;
-            box-sizing: border-box; /* Include padding in the element's total width */
-        }
+
         .sidebar {
-            flex-basis: 250px; /* Fixed width for the sidebar */
-            flex-shrink: 0; /* Prevent sidebar from shrinking */
-            background-color: #eee; /* Light grey background for sidebar */
-            padding: 20px;
-            box-sizing: border-box; /* Include padding in the element's total width */
-            border-left: 1px solid #ddd; /* Separator line */
+            flex: 0 0 280px;
+            background-color: #fff;
+            border-right: 1px solid var(--border-color);
+            padding: 25px;
         }
-        .sidebar h2 {
-            color: #333;
-            margin-top: 0;
-            border-bottom: 2px solid #00bcd4; /* Underline for the heading */
+
+        .main-content {
+            flex: 1;
+            padding: 30px 45px;
+        }
+
+        /* --- HEADINGS & TEXT --- */
+        .page-header {
+            border-bottom: 3px solid var(--university-blue);
+            margin-bottom: 30px;
             padding-bottom: 10px;
-            margin-bottom: 15px;
         }
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+
+        h1, h2, h3, h4 {
+            color: var(--university-blue);
+            font-weight: 700;
         }
-        .sidebar li {
-            margin-bottom: 8px;
+        h1 { font-size: 2.5em; margin: 0; }
+        h2 { 
+            font-size: 1.8em; 
+            border-bottom: 2px solid var(--accent-gold); /* Used accent color */
+            padding-bottom: 10px; 
+            margin-top: 40px; 
+            display: inline-block; /* Makes border fit content */
         }
-        .sidebar a {
+        h3 { font-size: 1.4em; margin-bottom: 1.2em;}
+        h4 { font-size: 1.1em; color: var(--dark-text); }
+
+        .content-section { margin-bottom: 40px; }
+        .course-overview-text { line-height: 1.8; font-size: 1.1em; color: #343a40; }
+        
+        /* --- SIDEBAR NAVIGATION --- */
+        .sidebar h2 { border: none; padding-bottom: 5px; }
+        .department-nav ul { list-style: none; padding: 0; margin: 0; }
+        .department-nav a {
+            display: block;
+            padding: 12px 18px;
             text-decoration: none;
-            color: #0056b3; /* Link color */
-            display: block; /* Make the link fill the list item */
-            padding: 5px 0;
-            transition: color 0.3s ease, font-weight 0.3s ease;
+            color: var(--dark-text);
+            font-weight: 500;
+            border-radius: 6px; /* Rounded corners for links */
+            margin-bottom: 5px;
+            transition: all 0.2s ease-in-out;
         }
-        .sidebar a:hover {
-            color: #00bcd4; /* Hover color */
+        .department-nav a:hover {
+            background-color: var(--light-blue);
+            color: var(--university-blue);
+            transform: translateX(5px);
         }
-         .sidebar a.active {
-             font-weight: bold;
-             color: #00bcd4; /* Active color */
-         }
+        .department-nav a.active {
+            background-color: var(--university-blue);
+            color: #fff;
+            font-weight: 700;
+        }
 
-
-        h1, h2, h3 {
-            color: #00bcd4;
-        }
-         h2 { /* Style for Year/Semester headings */
-             margin-top: 30px;
-             margin-bottom: 15px;
-             border-bottom: 1px solid #eee;
-             padding-bottom: 5px;
-         }
-        .course-info {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #eee;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-        }
+        /* --- MODULE TABLE --- */
         .module-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px; /* Added border-radius */
-            overflow: hidden; /* Ensures border-radius applies */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
         }
         .module-table th, .module-table td {
-            padding: 10px 12px; /* Adjusted padding */
+            padding: 15px; /* Increased padding */
             text-align: left;
-            border-bottom: 1px solid #eee;
-             /* Added vertical alignment */
-            vertical-align: top;
+            border-bottom: 1px solid var(--border-color);
         }
-        .module-table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
+        .module-table thead th {
+            background-color: var(--background-grey);
+            font-weight: 700;
+            color: var(--dark-text);
         }
-        .module-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
+        .module-table tbody tr:hover {
+            background-color: var(--light-blue);
         }
-         .module-table tbody tr:hover {
-             background-color: #e9e9e9; /* Hover effect for rows */
-         }
-         .module-table td:first-child { font-weight: bold; } /* Bold module code */
+        .module-table .total-row {
+            background-color: var(--background-grey);
+            font-weight: 700;
+            color: var(--university-blue);
+        }
 
+        /* --- HOD PROFILE --- */
+        .hod-profile {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(90deg, var(--light-blue) 0%, rgba(255,255,255,1) 100%);
+            border-radius: 8px;
+            padding: 24px;
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .hod-profile img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin-right: 24px;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        .hod-profile h3 { border: none; font-size: 1.6em; margin: 0 0 5px 0; }
+        .hod-profile p { margin: 0; font-size: 1.1em; color: var(--dark-text); }
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .main-container {
-                flex-direction: column; /* Stack columns on smaller screens */
-                margin: 10px;
-            }
-            .sidebar {
-                flex-basis: auto; /* Allow sidebar to take up full width */
-                border-left: none;
-                border-bottom: 1px solid #ddd; /* Add a bottom border */
-            }
+        /* --- ACADEMIC STAFF GRID --- */
+        .staff-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        .staff-card {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            padding: 25px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .staff-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: var(--university-blue);
+        }
+        .staff-card img {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            border: 4px solid var(--background-grey);
+        }
+        .staff-card-details p {
+            margin: 0;
+            font-size: 0.9em;
+            color: var(--light-text);
+        }
+        
+        /* --- RESPONSIVE ADJUSTMENTS --- */
+        @media (max-width: 992px) {
+            .main-container { flex-direction: column; margin: 10px; box-shadow: none; border: 1px solid var(--border-color);}
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border-color); flex-basis: auto; }
+            .main-content { padding: 25px; }
+            .hod-profile { flex-direction: column; text-align: center; background: var(--light-blue); }
+            .hod-profile img { margin-right: 0; margin-bottom: 20px; }
         }
     </style>
 
-<?php
-// Include the footer which should close the body and html tags
-include_once("include/footer.php");
+  <!--links are not clicble solved by script-->
 
-// It's generally good practice to close the connection at the end of the script
-// However, if header.php establishes a persistent connection or footer.php closes it,
-// you might not need this explicitly here.
-// if (isset($con) && $con instanceof mysqli && !$con->connect_error) {
-//     mysqli_close($con);
-// }
-// Assuming header establishes, and footer may or may not close.
-// It's safer to handle connection closing where it's opened or via a dedicated function.
-// Given the header inclusion structure, I'll rely on header/footer for connection management.
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // Your live search javascript is here...
+        });
+    </script>
+<?php
+// Corrected syntax with quotes
+include_once('include/footer.php');
 ?>

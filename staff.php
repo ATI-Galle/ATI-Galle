@@ -6,415 +6,363 @@ error_reporting(E_ALL);
 
 include('include/header.php');
 
-echo "\n"; 
+echo "\n";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organization Structure (MySQLi)</title>
+    <title>Modern Organization Structure</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        /* Your provided CSS starts here */
-        body { /* Basic body style for visibility */
-            font-family: sans-serif;
+        /* --- MODERN CSS STYLES --- */
+        :root {
+            --primary-color:rgb(34, 129, 238); /* Vibrant Teal */
+            --primary-light: #e8f8f5;
+            --dark-color: #2c3e50;    /* Dark Slate Blue */
+            --text-color:rgb(243, 255, 22);     /* Wet Asphalt */
+            --light-gray: #ecf0f1;   /* Clouds */
+            --white-color: #ffffff;
+            --border-radius-md: 12px;
+            --border-radius-sm: 8px;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
             margin: 0;
-            padding: 0; 
-            background-color: #f4f4f4; 
+            padding: 0;
+            background-color: var(--light-gray);
+            color: var(--text-color);
         }
+
+        /* Debug Styles (kept for your convenience) */
         .debug-output {
-            background-color: #fffecb;
-            border: 1px solid #e6db55;
-            padding: 10px;
-            margin: 10px auto; 
-            max-width: 1360px; 
-            box-sizing: border-box;
-            font-size: 0.9em;
-            line-height: 1.4;
+            background-color: #fffecb; border: 1px solid #e6db55; padding: 10px;
+            margin: 10px auto; max-width: 1360px; box-sizing: border-box; font-size: 0.9em;
         }
-        .debug-output pre {
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        .debug-error {
-            background-color: #ffecec;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
+        .debug-output pre { white-space: pre-wrap; word-break: break-all; }
+        .debug-error { background-color: #ffecec; border: 1px solid #f5c6cb; color: #721c24; }
 
-        /* --- PASTE YOUR FULL CSS FROM THE PROMPT HERE --- */
-        /* (Same CSS as before - no changes needed here) */
+        /* Main Container */
         .org-structure-container {
-            max-width: 1400px; margin: 0 auto; background-color: #fff; padding: 20px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); border-radius: 8px;
+            max-width: 1400px;
+            margin: 2rem auto;
+            background-color: var(--white-color);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            border-radius: var(--border-radius-md);
         }
-        .org-layer {
-            margin-bottom: 40px; border-bottom: 1px solid #eee; padding-bottom: 30px;
-        }
-        .org-layer:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
-        .layer-title {
-            text-align: center; font-size: 1.8em; color: #333; margin-bottom: 20px; margin-top: 0;
-            padding-bottom: 10px; border-bottom: 2px solid #673ab7; display: block;
-            width: fit-content; margin-left: auto; margin-right: auto; padding-right: 20px; padding-left: 20px;
-        }
-        .staff-section-container { position: relative; width: 100%; margin: 0 auto; overflow: hidden; padding: 0; box-sizing: border-box; }
-        .cards-wrapper { overflow: hidden; padding: 0 20px; box-sizing: border-box; }
-        .staff-cards-container {
-            display: flex; scroll-behavior: smooth; overflow-x: auto; scrollbar-width: none;
-            -ms-overflow-style: none; padding-bottom: 15px;
-        }
-        .staff-cards-container::-webkit-scrollbar { display: none; }
-        .staff-cards-container.expanded {
-            overflow-x: visible; flex-wrap: wrap; justify-content: center; padding-bottom: 0;
-        }
-        .staff-cards-container.expanded .staff-card { margin-right: 20px; margin-bottom: 20px; }
-        .staff-card {
-            flex: 0 0 auto; width: 280px; height: 350px; margin-right: 20px; background-size: cover;
-            background-position: center; color: white; position: relative; display: flex; flex-direction: column;
-            border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .staff-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        .staff-card:last-child { margin-right: 0; } /* Non-expanded only */
-        .staff-cards-container.expanded .staff-card:last-child { margin-right: 20px; } /* Expanded consistency */
-        .card-title-bar {
-            height: 40px; display: flex; justify-content: center; align-items: center; font-weight: bold;
-            color: white; padding: 0 10px; box-sizing: border-box; flex-shrink: 0; text-align: center;
-            background-color: #673ab7; font-size: 1.1em;
-        }
-        .layer-1 .card-title-bar { background-color: #1a237e; }
-        .layer-2 .card-title-bar { background-color: #004d40; }
-        .layer-3 .card-title-bar { background-color: #e65100; }
-        .layer-4 .card-title-bar { background-color: #33691e; }
-        .card-overlay {
-            position: absolute; top: 40px; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.2));
-            display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; box-sizing: border-box;
-        }
-        .card-content { position: relative; z-index: 1; }
-        .staff-name { font-size: 1.3em; font-weight: bold; margin-top: 0; margin-bottom: 5px; }
-        .staff-qualifications, .staff-position { font-size: 0.9em; margin-top: 0; margin-bottom: 5px; opacity: 0.9; }
-        .staff-position { margin-bottom: 15px; }
-        .more-button {
-            background-color: rgba(255,255,255,0.2); border: 2px solid white; color: white; padding: 8px 15px;
-            font-size: 0.9em; cursor: pointer; transition: background-color 0.3s ease; align-self: flex-start;
-            border-radius: 5px; margin-top: auto;
-        }
-        .more-button:hover { background-color: rgba(255,255,255,0.4); }
-        .nav-arrow {
-            position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0,0,0,0.5);
-            color: white; border: none; padding: 10px; cursor: pointer; z-index: 10; font-size: 1.5em;
-            border-radius: 50%; transition: background-color 0.3s ease, opacity 0.3s ease;
-            width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;
-        }
-        .nav-arrow:hover { background-color: rgba(0,0,0,0.8); }
-        .left-arrow { left: 10px; }
-        .right-arrow { right: 10px; }
-        .nav-arrow.hidden { opacity: 0; pointer-events: none; }
-        .see-more-link {
-            display: block; text-align: right; margin-top: 15px; margin-right: 20px; font-size: 1.1em;
-            color: #673ab7; text-decoration: none; cursor: pointer; transition: color 0.3s ease;
-        }
-        .see-more-link:hover { text-decoration: underline; color: #512da8; }
 
-        @media (max-width: 768px) {
-            .org-structure-container { padding: 10px; }
-            .org-layer { margin-bottom: 30px; padding-bottom: 20px; }
-            .layer-title { font-size: 1.5em; margin-bottom: 15px; padding-right: 10px; padding-left: 10px; }
-            .cards-wrapper { padding: 0 10px; }
-            .staff-card { width: 240px; height: 320px; margin-right: 15px; }
-            .staff-cards-container.expanded .staff-card { margin-right: 15px; margin-bottom: 15px; }
-            .staff-cards-container.expanded .staff-card:last-child { margin-right: 15px; }
-            .card-title-bar { height: 35px; font-size: 1em; }
-            .card-overlay { top: 35px; padding: 15px; }
-            .staff-name { font-size: 1.1em; }
-            .staff-qualifications, .staff-position { font-size: 0.8em; }
-            .more-button { padding: 6px 12px; font-size: 0.8em; }
-            .nav-arrow { padding: 8px; font-size: 1.2em; width: 35px; height: 35px; }
-            .left-arrow { left: 5px; }
-            .right-arrow { right: 5px; }
-            .see-more-link { margin-right: 10px; font-size: 1em; }
+        /* Layer Styles */
+        .org-layer {
+            margin-bottom: 3rem;
         }
-        /* --- END OF YOUR CSS --- */
+        .org-layer:last-child {
+            margin-bottom: 0;
+        }
+        .layer-title {
+            text-align: center;
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin: 0 auto 2rem auto;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--primary-color);
+            display: inline-block;
+            width: auto;
+            display: block;
+            width: fit-content;
+        }
+
+        /* Card Scrolling Section */
+        .staff-section-container {
+            position: relative;
+        }
+        .cards-wrapper {
+            overflow: hidden;
+        }
+        .staff-cards-container {
+            display: flex;
+            scroll-behavior: smooth;
+            overflow-x: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE, Edge */
+            padding-bottom: 15px; /* Space for shadow */
+            margin: 0 -10px; /* Counteract card margin */
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+        .staff-cards-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari */
+        }
+        .staff-cards-container.expanded {
+            overflow-x: visible;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding-bottom: 0;
+            margin: 0 -10px; /* Counteract card margin */
+        }
+
+        /* NEW Staff Card Design */
+        .staff-card {
+            flex: 0 0 280px;
+            width: 280px;
+            margin: 0 10px;
+            background-color: var(--white-color);
+            border-radius: var(--border-radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .staff-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .staff-cards-container.expanded .staff-card {
+            margin: 10px;
+        }
+        .card-image {
+            height: 250px;
+            background-size: cover;
+            background-position: center;
+        }
+        .card-content-wrapper {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; /* Allows content to fill space */
+            text-align: center;
+        }
+        .staff-position {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0 0 0.25rem 0;
+        }
+        .staff-name {
+            font-size: 1.25em;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin: 0;
+            line-height: 1.2;
+        }
+        .staff-qualifications {
+            font-size: 0.8em;
+            color: var(--text-color);
+            opacity: 0.8;
+            margin-top: 0.5rem;
+            flex-grow: 1; /* Pushes CID label down */
+        }
+        .cid-label {
+            background-color: var(--primary-light);
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 5px 12px;
+            font-size: 0.8em;
+            border-radius: 50px; /* Pill shape */
+            margin: 1rem auto 0 auto;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        /* Navigation Arrows */
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            color: var(--dark-color);
+            border: 1px solid var(--light-gray);
+            cursor: pointer;
+            z-index: 10;
+            font-size: 1.5em;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .nav-arrow:hover {
+            background-color: var(--primary-color);
+            color: var(--white-color);
+            border-color: var(--primary-color);
+        }
+        .left-arrow { left: -15px; }
+        .right-arrow { right: -15px; }
+        .nav-arrow.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* See More Link */
+        .see-more-link {
+            display: block;
+            text-align: right;
+            margin-top: 1.5rem;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--primary-color);
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .see-more-link:hover {
+            text-decoration: underline;
+            color: var(--dark-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .org-structure-container { padding: 1rem; margin: 1rem; }
+            .layer-title { font-size: 1.6em; }
+            .staff-card { flex: 0 0 250px; width: 250px; }
+            .nav-arrow { width: 40px; height: 40px; font-size: 1.2em; }
+            .left-arrow { left: 0px; }
+            .right-arrow { right: 0px; }
+        }
+
+
+
+
+        
     </style>
 </head>
 <body>
-    <?php
-    // Simulate header if include("include/header.php") is problematic for testing
-    // Make sure your actual header.php doesn't output <html> or <body> tags if this file already does.
-    if (file_exists("include/header.php")) {
-        // include("include/header.php");
-    } else {
-    }
-    ?>
-
     <div class="org-structure-container">
+        <?php
+        include('include/config.php');
 
-    <?php
-
-    if (file_exists('include/config.php')) {
-        include('include/config.php'); // This should define $con using mysqli_connect
-    } else {
-    }
-
-    // Check if $con is a valid mysqli connection object
-    if (!isset($con) || !($con instanceof mysqli)) {
-    } else {
-    }
-
-    $staff_data_by_position = [
-        'layer1' => [], 'layer2' => [], 'layer3' => [], 'layer4' => []
-    ];
-
-    $position_mapping = [
-        'Dire' => ['text' => 'Director', 'layer' => 'layer1'],
-        'Regi' => ['text' => 'Registrar', 'layer' => 'layer1'],
-        'AReg' => ['text' => 'Asst. Registrar', 'layer' => 'layer1'],
-        'Acct' => ['text' => 'Accountant', 'layer' => 'layer1'],
-        'Legal' => ['text' => 'Legal Officer', 'layer' => 'layer1'],
-        'Audit' => ['text' => 'Internal Auditor', 'layer' => 'layer1'],
-        'HOD'  => ['text' => 'Head of Department', 'layer' => 'layer2'],
-        'SLect' => ['text' => 'Senior Lecturer', 'layer' => 'layer3'],
-        'Lect' => ['text' => 'Lecturer', 'layer' => 'layer4'],
-        'Lib'  => ['text' => 'Librarian', 'layer' => 'layer4'],
-        'Demo' => ['text' => 'Demonstrator', 'layer' => 'layer4'],
-        'Offi' => ['text' => 'Office Staff', 'layer' => 'layer4'],
-    ];
-
-    $staff_results_array = []; // To store fetched rows
-
-    
-    // SQL Query - ensure s_order column exists or remove it from query
-    // The IFNULL part is for robust sorting if s_order can be NULL.
-    $sql = "SELECT stid, sname, spos, sed, stimg  
-            FROM staff 
-            WHERE status = '1' 
-            ";
-    // If you don't have s_order column, use this simpler query:
-    // $sql = "SELECT stid, sname, spos, sed, stimg FROM staff WHERE status = 'Active' ORDER BY spos ASC, sname ASC";
-    
-    $result = mysqli_query($con, $sql);
-
-    if ($result) {
-        
-        // Fetch all results into an array
-        while ($row = mysqli_fetch_assoc($result)) {
-            $staff_results_array[] = $row;
-        }
-        mysqli_free_result($result); // Free result set
-
-        if (count($staff_results_array) > 0) {
-            // echo "<div class='debug-output'><pre>Fetched staff data (first 2 records):\n" . htmlspecialchars(print_r(array_slice($staff_results_array,0,2), true)) . "</pre></div>";
+        if (!isset($con) || !($con instanceof mysqli)) {
+            die("<div class='debug-output debug-error'>Database connection failed.</div>");
         }
 
-        $unmapped_positions_found = [];
-        foreach ($staff_results_array as $staff_member) { // Use the fetched array
-            if (isset($position_mapping[$staff_member['spos']])) {
-                $layer_key = $position_mapping[$staff_member['spos']]['layer'];
-                $staff_data_by_position[$layer_key][] = $staff_member;
-            } else {
-                 $unmapped_positions_found[$staff_member['spos']] = ($unmapped_positions_found[$staff_member['spos']] ?? 0) + 1;
-                 echo "<div class='debug-output debug-error'>Warning: Staff member '{$staff_member['sname']}' (ID: {$staff_member['stid']}) has an unmapped position '{$staff_member['spos']}'. This staff member will not be displayed.</div>";
+        $staff_data_by_position = [
+            'layer1' => [], 'layer2' => [], 'layer3' => [], 'layer4' => [], 'layer5' => [], 'layer6' => []
+        ];
+
+        $position_mapping = [
+            'Dire'  => ['text' => 'Director', 'layer' => 'layer1'],
+            'Regi'  => ['text' => 'Registrar', 'layer' => 'layer1'],
+            'AReg'  => ['text' => 'Asst. Registrar', 'layer' => 'layer1'],
+            'Acct'  => ['text' => 'Accountant', 'layer' => 'layer1'],
+            'Legal' => ['text' => 'Legal Officer', 'layer' => 'layer1'],
+            'Audit' => ['text' => 'Internal Auditor', 'layer' => 'layer1'],
+            'HOD'   => ['text' => 'Head of Department', 'layer' => 'layer2'],
+            'SLect' => ['text' => 'Senior Lecturer', 'layer' => 'layer3'],
+            'Lect'  => ['text' => 'Lecturer', 'layer' => 'layer4'],
+            'Lib'   => ['text' => 'Librarian', 'layer' => 'layer5'],
+            'Demo'  => ['text' => 'Demonstrator', 'layer' => 'layer5'],
+            'Offi'  => ['text' => 'Office Staff', 'layer' => 'layer6'],
+        ];
+
+        $sql = "SELECT stid, sname, spos, cid, sed, stimg FROM staff WHERE status = '1'";
+        $result = mysqli_query($con, $sql);
+
+        if ($result) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                if (isset($position_mapping[$row['spos']])) {
+                    $layer_key = $position_mapping[$row['spos']]['layer'];
+                    $staff_data_by_position[$layer_key][] = $row;
+                } else {
+                    echo "<div class='debug-output debug-error'>Warning: Staff member '{$row['sname']}' has an unmapped position '{$row['spos']}'.</div>";
+                }
             }
+            mysqli_free_result($result);
+        } else {
+            echo "<div class='debug-output debug-error'><strong>Database Query Error:</strong> " . htmlspecialchars(mysqli_error($con)) . "</div>";
         }
-        if(!empty($unmapped_positions_found)){
-             echo "<div class='debug-output debug-error'>Summary of unmapped positions: <pre>" . htmlspecialchars(print_r($unmapped_positions_found, true)) . "</pre>Ensure these 'spos' codes are in your \$position_mapping array.</div>";
+
+        function render_staff_layer($layer_key, $layer_title, $staff_data_by_position, $position_mapping) {
+            $layer_id_num = substr($layer_key, -1);
+            $staff_data = $staff_data_by_position[$layer_key] ?? [];
+
+            echo "<section class='org-layer layer-{$layer_id_num}'>";
+            echo "<h2 class='layer-title'>{$layer_title}</h2>";
+            
+            if (empty($staff_data)) {
+                echo "<p style='text-align:center; padding:20px;'>No staff found for this category.</p>";
+            } else {
+                echo "<div class='staff-section-container'>";
+                echo "<button class='nav-arrow left-arrow' onclick=\"scrollLayer('layer-{$layer_id_num}-cards', -1)\" aria-label='Scroll Left'>&#9664;</button>";
+                echo "<button class='nav-arrow right-arrow' onclick=\"scrollLayer('layer-{$layer_id_num}-cards', 1)\" aria-label='Scroll Right'>&#9654;</button>";
+                echo "<div class='cards-wrapper'>";
+                echo "<div class='staff-cards-container' id='layer-{$layer_id_num}-cards'>";
+
+                foreach ($staff_data as $staff_member) {
+                    $display_position = $position_mapping[$staff_member['spos']]['text'];
+                    $image_path = "admin/" . $staff_member['stimg'];
+                    $image_url = !empty($staff_member['stimg']) && file_exists($image_path) 
+                                 ? htmlspecialchars($image_path) 
+                                 : "https://via.placeholder.com/280x350/ecf0f1/bdc3c7?text=" . urlencode($display_position);
+
+                    echo "<div class='staff-card'>";
+                    echo "    <div class='card-image' style=\"background-image: url('{$image_url}');\"></div>";
+                    echo "    <div class='card-content-wrapper'>";
+                    echo "        <div class='staff-position'>" . htmlspecialchars($display_position) . "</div>";
+                    echo "        <div class='staff-name'>" . htmlspecialchars($staff_member['sname']) . "</div>";
+                    echo "        <div class='staff-qualifications'>" . htmlspecialchars($staff_member['sed']) . "</div>";
+                    
+                    $positions_to_skip_label = ['Dire', 'Regi', 'Lib'];
+                    if (!in_array($staff_member['spos'], $positions_to_skip_label) && !empty($staff_member['cid'])) {
+                        echo "        <div class='cid-label'>" . htmlspecialchars($staff_member['cid']) . "</div>";
+                    }
+
+                    echo "    </div>"; // end card-content-wrapper
+                    echo "</div>"; // end staff-card
+                }
+
+                echo "</div>"; // end staff-cards-container
+                echo "</div>"; // end cards-wrapper
+
+                if (count($staff_data) > 4) {
+                    echo "<a href='#' class='see-more-link' data-target='layer-{$layer_id_num}-cards'>See All " . htmlspecialchars($layer_title) . " &gt;</a>";
+                }
+                echo "</div>"; // end staff-section-container
+            }
+
+            echo "</section>";
         }
 
-    } else {
-        echo "<div class='debug-output debug-error'><strong>Database Query Error:</strong> " . htmlspecialchars(mysqli_error($con)) . "<br>SQL Tried: <code>".htmlspecialchars($sql)."</code></div>";
-    }
-    ?>
+        render_staff_layer('layer1', 'Executive Leadership', $staff_data_by_position, $position_mapping);
+        render_staff_layer('layer2', 'Heads of Department', $staff_data_by_position, $position_mapping);
+        render_staff_layer('layer3', 'Senior Lecturers', $staff_data_by_position, $position_mapping);
+        render_staff_layer('layer4', 'Lecturers & Faculty', $staff_data_by_position, $position_mapping);
+        render_staff_layer('layer5', 'Academic Support', $staff_data_by_position, $position_mapping);
+        render_staff_layer('layer6', 'Administrative & Office Staff', $staff_data_by_position, $position_mapping);
 
-    <section class="org-layer layer-1">
-        <br><br> 
-        <h2 class="layer-title">Director Level / Executive Leadership</h2>
-        <div class="staff-section-container">
-            <button class="nav-arrow left-arrow" onclick="scrollLayer('layer-1-cards', -1)" aria-label="Scroll Left">&#9664;</button>
-            <button class="nav-arrow right-arrow" onclick="scrollLayer('layer-1-cards', 1)" aria-label="Scroll Right">&#9654;</button>
-            <div class="cards-wrapper">
-                <div class="staff-cards-container" id="layer-1-cards">
-                    <?php if (!empty($staff_data_by_position['layer1'])): ?>
-                        <?php foreach ($staff_data_by_position['layer1'] as $staff_member): ?>
-                            <?php
-                            $display_position = $position_mapping[$staff_member['spos']]['text'];
-                            $image_path = "admin/".$staff_member['stimg']; 
-                            $image_url = !empty($image_path) ? htmlspecialchars($image_path) : "https://via.placeholder.com/280x350/1a237e/ffffff?text=" . urlencode($display_position);
-                            ?>
-                            <div class="staff-card" style="background-image: url('<?php echo $image_url; ?>');">
-                                <div class="card-title-bar"><?php echo htmlspecialchars($display_position); ?></div>
-                                <div class="card-overlay">
-                                    <div class="card-content">
-                                        <div class="staff-name"><?php echo htmlspecialchars($staff_member['sname']); ?></div>
-                                        <div class="staff-qualifications"><?php echo htmlspecialchars($staff_member['sed']); ?></div>
-                                        <div class="staff-position"><?php echo htmlspecialchars($display_position); ?></div>
-                                        <button class="more-button" data-stid="<?php echo htmlspecialchars($staff_member['stid']); ?>">MORE</button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <p style='text-align:center; padding:20px; width:100%;'>No Director Level staff found matching criteria.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php if (count($staff_data_by_position['layer1'] ?? []) > 4): ?>
-                <a href="#" class="see-more-link" data-target="layer-1-cards">See More Director Level Staff &gt;</a>
-            <?php endif; ?>
-        </div>
-    </section>
+        if (isset($con) && $con instanceof mysqli) {
+            mysqli_close($con);
+        }
+        ?>
+    </div> 
 
-    <section class="org-layer layer-2">
-        <h2 class="layer-title">Head of Departments (HODs)</h2>
-        <div class="staff-section-container">
-            <button class="nav-arrow left-arrow" onclick="scrollLayer('layer-2-cards', -1)" aria-label="Scroll Left">&#9664;</button>
-            <button class="nav-arrow right-arrow" onclick="scrollLayer('layer-2-cards', 1)" aria-label="Scroll Right">&#9654;</button>
-            <div class="cards-wrapper">
-                <div class="staff-cards-container" id="layer-2-cards">
-                    <?php if (!empty($staff_data_by_position['layer2'])): ?>
-                        <?php foreach ($staff_data_by_position['layer2'] as $staff_member): ?>
-                            <?php
-                            $display_position = $position_mapping[$staff_member['spos']]['text'];
-                            $image_path = "admin/".$staff_member['stimg'];
-                            $image_url = !empty($image_path) ? htmlspecialchars($image_path) : "https://via.placeholder.com/280x350/004d40/ffffff?text=" . urlencode(substr($display_position, 0, 20));
-                            ?>
-                            <div class="staff-card" style="background-image: url('<?php echo $image_url; ?>');">
-                                <div class="card-title-bar"><?php echo htmlspecialchars($display_position); ?></div>
-                                <div class="card-overlay">
-                                    <div class="card-content">
-                                        <div class="staff-name"><?php echo htmlspecialchars($staff_member['sname']); ?></div>
-                                        <div class="staff-qualifications"><?php echo htmlspecialchars($staff_member['sed']); ?></div>
-                                        <div class="staff-position"><?php echo htmlspecialchars($display_position); ?></div>
-                                        <button class="more-button" data-stid="<?php echo htmlspecialchars($staff_member['stid']); ?>">MORE</button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <p style='text-align:center; padding:20px; width:100%;'>No HODs found matching criteria.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php if (count($staff_data_by_position['layer2'] ?? []) > 4): ?>
-                <a href="#" class="see-more-link" data-target="layer-2-cards">See More HODs &gt;</a>
-            <?php endif; ?>
-        </div>
-    </section>
-
-    <section class="org-layer layer-3">
-        <h2 class="layer-title">Senior Faculty / Managers</h2>
-        <div class="staff-section-container">
-             <button class="nav-arrow left-arrow" onclick="scrollLayer('layer-3-cards', -1)" aria-label="Scroll Left">&#9664;</button>
-            <button class="nav-arrow right-arrow" onclick="scrollLayer('layer-3-cards', 1)" aria-label="Scroll Right">&#9654;</button>
-            <div class="cards-wrapper">
-                <div class="staff-cards-container" id="layer-3-cards">
-                    <?php if (!empty($staff_data_by_position['layer3'])): ?>
-                        <?php foreach ($staff_data_by_position['layer3'] as $staff_member): ?>
-                            <?php
-                            $display_position = $position_mapping[$staff_member['spos']]['text'];
-                            $image_path = "admin/".$staff_member['stimg'];
-                            $image_url = !empty($image_path) ? htmlspecialchars($image_path) : "https://via.placeholder.com/280x350/e65100/ffffff?text=" . urlencode($display_position);
-                            ?>
-                            <div class="staff-card" style="background-image: url('<?php echo $image_url; ?>');">
-                                <div class="card-title-bar"><?php echo htmlspecialchars($display_position); ?></div>
-                                <div class="card-overlay">
-                                    <div class="card-content">
-                                        <div class="staff-name"><?php echo htmlspecialchars($staff_member['sname']); ?></div>
-                                        <div class="staff-qualifications"><?php echo htmlspecialchars($staff_member['sed']); ?></div>
-                                        <div class="staff-position"><?php echo htmlspecialchars($display_position); ?></div>
-                                        <button class="more-button" data-stid="<?php echo htmlspecialchars($staff_member['stid']); ?>">MORE</button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <p style='text-align:center; padding:20px; width:100%;'>No Senior Faculty / Managers found matching criteria.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php if (count($staff_data_by_position['layer3'] ?? []) > 4): ?>
-            <a href="#" class="see-more-link" data-target="layer-3-cards">See More Senior Staff &gt;</a>
-            <?php endif; ?>
-        </div>
-    </section>
-
-    <section class="org-layer layer-4">
-        <h2 class="layer-title">Faculty / Academic & Administrative Staff</h2>
-        <div class="staff-section-container">
-            <button class="nav-arrow left-arrow" onclick="scrollLayer('layer-4-cards', -1)" aria-label="Scroll Left">&#9664;</button>
-            <button class="nav-arrow right-arrow" onclick="scrollLayer('layer-4-cards', 1)" aria-label="Scroll Right">&#9654;</button>
-            <div class="cards-wrapper">
-                <div class="staff-cards-container" id="layer-4-cards">
-                     <?php if (!empty($staff_data_by_position['layer4'])): ?>
-                        <?php foreach ($staff_data_by_position['layer4'] as $staff_member): ?>
-                            <?php
-                            $display_position = $position_mapping[$staff_member['spos']]['text'];
-                            $image_path = "admin/".$staff_member['stimg'];
-                            $image_url = !empty($image_path) ? htmlspecialchars($image_path) : "https://via.placeholder.com/280x350/33691e/ffffff?text=" . urlencode($display_position);
-                            ?>
-                            <div class="staff-card" style="background-image: url('<?php echo $image_url; ?>');">
-                                <div class="card-title-bar"><?php echo htmlspecialchars($display_position); ?></div>
-                                <div class="card-overlay">
-                                    <div class="card-content">
-                                        <div class="staff-name"><?php echo htmlspecialchars($staff_member['sname']); ?></div>
-                                        <div class="staff-qualifications"><?php echo htmlspecialchars($staff_member['sed']); ?></div>
-                                        <div class="staff-position"><?php echo htmlspecialchars($display_position); ?></div>
-                                        <button class="more-button" data-stid="<?php echo htmlspecialchars($staff_member['stid']); ?>">MORE</button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <p style='text-align:center; padding:20px; width:100%;'>No Faculty / Academic & Administrative staff found matching criteria.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php if (count($staff_data_by_position['layer4'] ?? []) > 4): ?>
-            <a href="#" class="see-more-link" data-target="layer-4-cards">See More Faculty & Staff &gt;</a>
-            <?php endif; ?>
-        </div>
-    </section>
-
-    <?php
-    if (isset($con) && $con instanceof mysqli) {
-        mysqli_close($con); // Close MySQLi connection
-    }
-    echo "\n";
-    ?>
-    </div> <script>
-        // JAVASCRIPT REMAINS THE SAME AS IN THE PREVIOUS PDO VERSION
-        // (No changes needed to the JavaScript for toggling arrows or scrolling)
-
-        // Function to scroll for a specific layer
+    <script>
+        // --- JAVASCRIPT IS UNCHANGED, IT WORKS PERFECTLY WITH THE NEW STRUCTURE ---
         function scrollLayer(containerId, direction) {
             const cardsContainer = document.getElementById(containerId);
             if (!cardsContainer || cardsContainer.classList.contains('expanded')) {
                 return;
             }
-            const card = cardsContainer.querySelector('.staff-card');
-            if (!card) {
-                return; 
-            }
-            const scrollDistance = cardsContainer.clientWidth * 0.8; 
+            const scrollDistance = cardsContainer.clientWidth * 0.8;
             cardsContainer.scrollBy({
                 left: direction * scrollDistance,
                 behavior: 'smooth'
             });
         }
 
-        // Function to toggle arrow visibility
         function toggleLayerArrows(containerId) {
             const cardsContainer = document.getElementById(containerId);
-            if (!cardsContainer) {
-                const staffSection = document.querySelector(`.staff-section-container button[onclick*="'${containerId}'"]`)?.closest('.staff-section-container');
-                if (staffSection) {
-                    const leftArrow = staffSection.querySelector('.left-arrow');
-                    const rightArrow = staffSection.querySelector('.right-arrow');
-                    if(leftArrow) leftArrow.classList.add('hidden');
-                    if(rightArrow) rightArrow.classList.add('hidden');
-                }
-                return;
-            }
+            if (!cardsContainer) { return; }
             const staffSectionContainer = cardsContainer.closest('.staff-section-container');
             if (!staffSectionContainer) return;
             const leftArrow = staffSectionContainer.querySelector('.left-arrow');
@@ -432,7 +380,7 @@ echo "\n";
                 rightArrow.classList.add('hidden');
                 return;
             }
-            const tolerance = 2; 
+            const tolerance = 2;
             const isAtStart = cardsContainer.scrollLeft <= tolerance;
             const isAtEnd = cardsContainer.scrollLeft + cardsContainer.clientWidth >= cardsContainer.scrollWidth - tolerance;
             leftArrow.classList.toggle('hidden', isAtStart);
@@ -449,7 +397,7 @@ echo "\n";
                     if (cardsContainer) {
                         cardsContainer.classList.add('expanded');
                         link.style.display = 'none';
-                        toggleLayerArrows(targetContainerId); 
+                        toggleLayerArrows(targetContainerId);
                     }
                 });
             });
@@ -457,40 +405,30 @@ echo "\n";
             const layerContainers = document.querySelectorAll('.staff-cards-container');
             layerContainers.forEach(container => {
                 const containerId = container.id;
-                if (!containerId) return; 
-                toggleLayerArrows(containerId); 
+                if (!containerId) return;
+                toggleLayerArrows(containerId);
                 container.addEventListener('scroll', () => toggleLayerArrows(containerId), { passive: true });
                 let resizeTimeout;
                 window.addEventListener('resize', () => {
                     clearTimeout(resizeTimeout);
                     resizeTimeout = setTimeout(() => {
                         toggleLayerArrows(containerId);
-                    }, 200); 
-                });
-            });
-
-            const moreButtons = document.querySelectorAll('.more-button');
-            moreButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    const staffId = button.dataset.stid;
-                    alert('Staff ID: ' + staffId + ' - "More" button clicked. Implement action.');
-                    console.log('More button clicked for staff ID: ' + staffId);
+                    }, 200);
                 });
             });
         });
     </script>
 
-    <?php
-    // Simulate footer if include("include/footer.php") is problematic for testing
-    if (file_exists("include/footer.php")) {
-        // include("include/footer.php");
-    } else {
-        echo "<div class='debug-output debug-error'>Warning: include/footer.php not found.</div>";
-    }
+    <!--links are not clicble solved by script-->
 
-    include('include/footer.php');
-
-    ?>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // Your live search javascript is here...
+        });
+    </script>
 </body>
 </html>

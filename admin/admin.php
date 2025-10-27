@@ -12,7 +12,6 @@ $edit_mode = false;
 $user_data_for_form = [
     'id' => '',
     'username' => '',
-    // 'pet_name_hint' => '', // Removed
     'profile_image' => ''
 ];
 {
@@ -38,9 +37,12 @@ $user_data_for_form = [
         }
     }
     
-    $isSuperAdmin = ($loggedInUsername === 'Super Admin');
+    // --- AUTHORIZATION CHECK ---
+    // Check for admin privileges based on role or cid from the session
+    $userRole = $_SESSION['role'] ?? '';
+    $userCid = $_SESSION['cid'] ?? '';
+    $isAdmin = ($userRole === 'super_admin' || $userCid === 'SAdmin');
 
-    // --- CSRF Token (commented out) ---
 
     // ========================================================================
     //  HANDLE GET ACTIONS (DELETE, TOGGLE STATUS, ENTER EDIT MODE)
@@ -51,7 +53,7 @@ $user_data_for_form = [
 
         if ($user_id_get > 0) {
             if ($action === 'edit') {
-                if (!$isSuperAdmin) {
+                if (!$isAdmin) {
                     $error = "Authorization Error: You are not permitted to edit users.";
                 } else {
                     $conn_edit_fetch = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
@@ -76,12 +78,12 @@ $user_data_for_form = [
                     }
                 }
             } elseif ($action === 'delete' || $action === 'toggle_status') {
-                if (!$isSuperAdmin) {
+                if (!$isAdmin) {
                     $error = "Authorization Error: You do not have permission for this action.";
                 } else {
-                    // Super Admin cannot delete self for 'delete' action
-                    if ($action === 'delete' && $loggedInUserId === $user_id_get && $isSuperAdmin) {
-                         $error = "Super Admin account cannot be deleted from here.";
+                    // Admin cannot delete self for 'delete' action
+                    if ($action === 'delete' && $loggedInUserId === $user_id_get && $isAdmin) {
+                         $error = "Admin account cannot be deleted from here.";
                     } else {
                         $conn_action = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
                         if ($conn_action->connect_error) {
@@ -115,7 +117,7 @@ $user_data_for_form = [
                             $conn_action->close();
                         }
                     }
-                } // end $isSuperAdmin check for delete/toggle
+                } // end $isAdmin check for delete/toggle
                  if ($error) { // If an error occurred in action, redirect with error message
                     $param_key = ($action === 'delete') ? 'delerror' : (($action === 'toggle_status') ? 'statuserror' : 'autherror');
                     header("Location: " . $_SERVER['PHP_SELF'] . "?".$param_key."=" . urlencode($error));
@@ -154,9 +156,9 @@ $user_data_for_form = [
         $password_post = $_POST['password'] ?? ''; // For add, or new password for edit
         $profile_image_file_post = $_FILES['profile_image'] ?? null;
 
-        // --- UPDATE USER (Super Admin Only) ---
+        // --- UPDATE USER (Admin Only) ---
         if (isset($_POST['submit_update']) && isset($_POST['edit_user_id'])) {
-            if (!$isSuperAdmin) {
+            if (!$isAdmin) {
                 $error = "Authorization Error: You are not permitted to update users.";
             } else {
                 $user_id_to_update = intval($_POST['edit_user_id']);
@@ -216,8 +218,8 @@ $user_data_for_form = [
                                 if($stmt_update) $stmt_update->close();
                             } else { $error = "DB error (prepare update)."; error_log("SQL Update Prepare Error: ".$conn_update->error); if ($new_image_uploaded && file_exists($destination_path_update)) unlink($destination_path_update); }
                         }
-                        // If error during update, repopulate form for SA
-                        if (!empty($error) && $isSuperAdmin) {
+                        // If error during update, repopulate form for Admin
+                        if (!empty($error) && $isAdmin) {
                             $edit_mode = true;
                             $user_data_for_form['id'] = $user_id_to_update;
                             $user_data_for_form['username'] = $username_post;
@@ -228,9 +230,9 @@ $user_data_for_form = [
                 }
             }
         }
-        // --- ADD NEW USER (Super Admin Only) ---
+        // --- ADD NEW USER (Admin Only) ---
         elseif (isset($_POST['submit_add'])) {
-            if (!$isSuperAdmin) {
+            if (!$isAdmin) {
                 $error = "Authorization Error: You are not permitted to add users.";
             } elseif (empty($username_post) || empty($password_post)) {
                 $error = "Username and Password are required for new user.";
@@ -253,7 +255,6 @@ $user_data_for_form = [
                         else {
                             $conn_insert->set_charset("utf8mb4");
                             $hashed_password_add = password_hash($password_post, PASSWORD_DEFAULT);
-                            // Removed pet_name_hint from INSERT
                             $sql = "INSERT INTO users (username, password, profile_image) VALUES (?, ?, ?)";
                             $stmt = $conn_insert->prepare($sql);
                             if ($stmt === false) { $error = "DB error (prepare insert)."; error_log("SQL Insert Prepare Error: ".$conn_insert->error); if (file_exists($destination_path_add)) unlink($destination_path_add); }
@@ -270,8 +271,8 @@ $user_data_for_form = [
                     } else { $error = "Failed to move uploaded file."; }
                 }
             }
-            // If error in add by SA, repopulate form
-            if (!empty($error) && $isSuperAdmin) {
+            // If error in add by Admin, repopulate form
+            if (!empty($error) && $isAdmin) {
                 $user_data_for_form['username'] = $username_post;
             }
         }
@@ -311,7 +312,6 @@ $user_data_for_form = [
     <link rel="stylesheet" href="../plugins/switchery/switchery.min.css">
     <script src="assets/js/modernizr.min.js"></script>
     <style>
-        /* Styles (same as before, ensure .hint-text and .date are removed or unused if data is gone) */
         .form-section { padding: 20px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 5px; margin-bottom: 30px; }
         .form-section h4 { margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
         .form-section .form-group { margin-bottom: 20px; }
@@ -323,18 +323,17 @@ $user_data_for_form = [
         .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
         .users-section { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; }
         .users-section h4 { margin-bottom: 20px; }
-        .users { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 0; margin: 0; } /* Adjusted minmax */
+        .users { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; padding: 0; margin: 0; }
         .no-users { grid-column: 1 / -1; text-align: center; color: #888; padding: 20px; }
-        .anu { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.08); transition: all 0.2s ease-in-out; display: flex; flex-direction: column; position: relative; min-height: 250px; /* Added min-height */ }
+        .anu { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.08); transition: all 0.2s ease-in-out; display: flex; flex-direction: column; position: relative; min-height: 250px; }
         .anu:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .anu img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px auto; border: 3px solid #eee; } /* Adjusted size */
-        .anu h3 { font-size: 1em; margin: 10px 0; color: #333; word-wrap: break-word; } /* Adjusted size */
-        /* .anu .hint-text , .anu .date - Removed as data is not displayed */
+        .anu img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px auto; border: 3px solid #eee; }
+        .anu h3 { font-size: 1em; margin: 10px 0; color: #333; word-wrap: break-word; }
         .status-badge { position: absolute; top: 10px; right: 10px; padding: 3px 8px; border-radius: 10px; font-size: 0.75em; font-weight: bold; color: white; }
         .status-badge.active { background-color: #28a745; }
         .status-badge.inactive { background-color: #dc3545; }
-        .actions { margin-top: auto; padding-top: 10px; border-top: 1px solid #eee; display: flex; justify-content: space-around; gap: 5px; flex-wrap: wrap; /* Added flex-wrap */ }
-        .actions a, .actions button { padding: 5px 8px; font-size: 0.8em; border-radius: 3px; text-decoration: none; color: #fff; border: none; cursor: pointer; transition: opacity 0.2s ease; margin-bottom: 5px; /* Added margin for wrap */ }
+        .actions { margin-top: auto; padding-top: 10px; border-top: 1px solid #eee; display: flex; justify-content: space-around; gap: 5px; flex-wrap: wrap; }
+        .actions a, .actions button { padding: 5px 8px; font-size: 0.8em; border-radius: 3px; text-decoration: none; color: #fff; border: none; cursor: pointer; transition: opacity 0.2s ease; margin-bottom: 5px; }
         .actions a:hover, .actions button:hover { opacity: 0.85; }
         .btn-edit { background-color: #007bff; }
         .btn-activate { background-color: #28a745; }
@@ -366,7 +365,7 @@ $user_data_for_form = [
                             <?php if ($message): ?><div class="alert-message alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
                             <?php if ($error): ?><div class="alert-message alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
-                            <?php if ($isSuperAdmin): // Only Super Admin sees the Add/Edit form ?>
+                            <?php if ($isAdmin): // Only Admins see the Add/Edit form ?>
                             <div class="form-section">
                                 <h4><?php echo $edit_mode ? 'Edit User Details' : 'Add New User'; ?></h4>
                                 <form name="userform" method="post" enctype="multipart/form-data" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
@@ -409,7 +408,7 @@ $user_data_for_form = [
                                     </div>
                                 </form>
                             </div>
-                            <?php endif; // End $isSuperAdmin check for form display ?>
+                            <?php endif; // End $isAdmin check for form display ?>
 
                             <div class="users-section">
                                 <h4>Current Users</h4>
@@ -427,7 +426,7 @@ $user_data_for_form = [
                                                 <?php endif; ?>
                                                 <h3><?php echo htmlspecialchars($user_item['username']); ?></h3>
                                                 
-                                                <?php if ($isSuperAdmin): // Action buttons only for Super Admin ?>
+                                                <?php if ($isAdmin): // Action buttons only for Admin ?>
                                                 <div class="actions">
                                                     <a href="<?php echo $_SERVER['PHP_SELF']; ?>?action=edit&id=<?php echo $user_item['id']; ?>" class="btn-edit" title="Edit User">Edit</a>
                                                     
@@ -437,11 +436,11 @@ $user_data_for_form = [
                                                         <a href="<?php echo $_SERVER['PHP_SELF']; ?>?action=toggle_status&id=<?php echo $user_item['id']; ?>" class="btn-activate" title="Activate User" onclick="return confirm('Activate this user?');">Activate</a>
                                                     <?php endif; ?>
                                                     
-                                                    <?php if ($user_item['username'] !== 'Super Admin'): // Super Admin cannot delete self ?>
+                                                    <?php if ($loggedInUserId != $user_item['id']): // Any logged-in admin cannot delete themselves ?>
                                                         <a href="<?php echo $_SERVER['PHP_SELF']; ?>?action=delete&id=<?php echo $user_item['id']; ?>" class="btn-delete" title="Delete User" onclick="return confirm('Are you sure you want to delete this user? This cannot be undone.');">Delete</a>
                                                     <?php endif; ?>
                                                 </div>
-                                                <?php endif; // End $isSuperAdmin check for action buttons ?>
+                                                <?php endif; // End $isAdmin check for action buttons ?>
                                             </div>
                                         <?php endforeach; ?>
                                     <?php else: ?>

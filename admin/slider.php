@@ -1,8 +1,19 @@
-<?php include("include/header.php");?>
-<?php include("include/sidebar.php");?>
+<?php
+
+// -- MODIFIED: Start session to get user info --
+session_start();
+error_reporting(0);
+
+include('include/header.php');
+include('include/sidebar.php');
+?>
 
 <?php
-include ("include/config.php");
+include ('include/config.php');
+
+// -- MODIFIED: Assume a username is stored in the session after login --
+// Replace 'admin' with your actual default or guest user if needed.
+$current_user = $_SESSION['username'] ?? 'admin';
 
 // Optional: Set character set
 if (isset($conn) && $conn instanceof mysqli) {
@@ -12,9 +23,8 @@ if (isset($conn) && $conn instanceof mysqli) {
     // exit("Database connection error."); // Optionally stop execution
 }
 
-
 // --- PHP Logic for Handling Actions (Insert, Update, Delete, Activate/Deactivate) ---
-$message = ''; 
+$message = '';
 $message_type = ''; // To control message style (success/error)
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -24,17 +34,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         case 'insert':
             $stitle = $_POST['stitle'] ?? '';
             $stext = $_POST['stext'] ?? '';
-            $simg = ''; 
-            $status = 1; 
+            $simg = '';
+            $status = 1;
             $uploadOk = 1; // Assume upload will be okay initially
 
             if (isset($_FILES['simg']) && $_FILES['simg']['error'] == 0) {
                 $target_dir = "uploads/sliders/"; // Specific directory for sliders
                 if (!is_dir($target_dir)) {
                     if (!mkdir($target_dir, 0777, true)) {
-                         $message = "Error: Failed to create upload directory.";
-                         $message_type = 'error';
-                         $uploadOk = 0;
+                        $message = "Error: Failed to create upload directory.";
+                        $message_type = 'error';
+                        $uploadOk = 0;
                     }
                 }
                 
@@ -70,17 +80,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if ($uploadOk) { // Proceed only if upload was okay or no new image was attempted
                  if (!empty($stitle)) { // Basic validation
-                    $stmt = $conn->prepare("INSERT INTO slider (stitle, stext, simg, created_at, updated_at, status) VALUES (?, ?, ?, NOW(), NOW(), ?)");
-                    $stmt->bind_param("sssi", $stitle, $stext, $simg, $status);
+                    // -- MODIFIED: Added updated_by to the INSERT query --
+                    $stmt = $conn->prepare("INSERT INTO slider (stitle, stext, simg, created_at, updated_at, status, updated_by) VALUES (?, ?, ?, NOW(), NOW(), ?, ?)");
+                    $stmt->bind_param("sssis", $stitle, $stext, $simg, $status, $current_user); // 's' for the string $current_user
                     if ($stmt->execute()) {
                         $message = "New slider created successfully."; $message_type = 'success';
                     } else {
                         $message = "Error creating slider: " . $stmt->error; $message_type = 'error';
                     }
                     $stmt->close();
-                } else {
-                    $message = "Slider title cannot be empty."; $message_type = 'error';
-                }
+                 } else {
+                     $message = "Slider title cannot be empty."; $message_type = 'error';
+                 }
             }
             break;
 
@@ -94,12 +105,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $new_image_uploaded = false;
 
             if (isset($_FILES['simg']) && $_FILES['simg']['error'] == 0) {
-                $target_dir = "uploads/sliders/"; 
-                 if (!is_dir($target_dir)) {
+                $target_dir = "uploads/sliders/";
+                if (!is_dir($target_dir)) {
                     if (!mkdir($target_dir, 0777, true)) {
-                         $message = "Error: Failed to create upload directory.";
-                         $message_type = 'error';
-                         $uploadOk = 0;
+                        $message = "Error: Failed to create upload directory.";
+                        $message_type = 'error';
+                        $uploadOk = 0;
                     }
                 }
 
@@ -125,13 +136,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
                 }
             } elseif (isset($_FILES['simg']) && $_FILES['simg']['error'] !== UPLOAD_ERR_NO_FILE) {
-                 $message = "Image upload error: Code " . $_FILES['simg']['error']; $message_type = 'error'; $uploadOk = 0;
+                $message = "Image upload error: Code " . $_FILES['simg']['error']; $message_type = 'error'; $uploadOk = 0;
             }
             
             if ($uploadOk) {
                 if (!empty($sid) && !empty($stitle)) {
-                    $stmt = $conn->prepare("UPDATE slider SET stitle=?, stext=?, simg=?, updated_at=NOW() WHERE sid=?");
-                    $stmt->bind_param("sssi", $stitle, $stext, $simg, $sid);
+                    // -- MODIFIED: Added updated_by to the UPDATE query --
+                    $stmt = $conn->prepare("UPDATE slider SET stitle=?, stext=?, simg=?, updated_at=NOW(), updated_by=? WHERE sid=?");
+                    $stmt->bind_param("ssssi", $stitle, $stext, $simg, $current_user, $sid); // 's' for the string $current_user
                     if ($stmt->execute()) {
                         $message = "Slider updated successfully."; $message_type = 'success';
                     } else {
@@ -145,6 +157,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             break;
 
         case 'delete':
+            // ... (no changes needed for delete, activate, or deactivate logic) ...
             $sid = $_POST['sid'] ?? '';
             if (!empty($sid)) {
                 $image_path_to_delete = '';
@@ -175,8 +188,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (!empty($sid)) {
                 $new_status = ($action === 'activate') ? 1 : 0;
                 $action_text = ($action === 'activate') ? 'activated' : 'deactivated';
-                $stmt = $conn->prepare("UPDATE slider SET status=?, updated_at=NOW() WHERE sid=?");
-                $stmt->bind_param("ii", $new_status, $sid); // sid is integer
+                // -- MODIFIED: Also update the 'updated_by' field on status change --
+                $stmt = $conn->prepare("UPDATE slider SET status=?, updated_at=NOW(), updated_by=? WHERE sid=?");
+                $stmt->bind_param("isi", $new_status, $current_user, $sid);
                 if ($stmt->execute()) {
                     $message = "Slider " . $action_text . " successfully."; $message_type = 'success';
                 } else {
@@ -207,7 +221,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             --warning-color: #ffc107;
             --light-color: #f8f9fa;
             --dark-color: #343a40;
-            --font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             --border-radius: 0.3rem;
             --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
@@ -219,31 +233,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: var(--dark-color);
             display: flex; 
         }
-        .page-container { /* Changed from .container to match first example's structure */
+        .page-container {
             margin-left: 300px;
-    margin-right:100px; /* Same as sidebar width */
-    padding: 20px;
-    width: 1000px;
-    height:100%; /* Full width minus sidebar width */
-    box-sizing: border-box;
-    /* --- Add previous .page-container styles here --- */
-    max-width: none; /* Override previous max-width if needed */
-    margin-top: 10; /* Remove top margin if body flex handles alignment */
-    background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    border-top: 5px solid var(--primary-color);
-    position: relative; /* Needed if there were absolute elements inside */
-    flex-grow: 1; /* Allow main content to grow */
-
+            margin-right:100px;
+            padding: 20px;
+            width: 1000px;
+            height:100%;
+            box-sizing: border-box;
+            max-width: none;
+            margin-top: 10;
+            background: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            border-top: 5px solid var(--primary-color);
+            position: relative;
+            flex-grow: 1;
         }
-        h2 { /* General h2 style from first example */
+        h2 {
             color: var(--primary-color);
             margin-bottom: 1.5rem;
             text-align: center;
             font-weight: 600;
         }
-        h3 { /* General h3 style from first example */
+        h3 {
             color: var(--dark-color);
             margin-top: 2rem;
             margin-bottom: 1rem;
@@ -252,7 +264,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding-bottom: 0.5rem;
             font-weight: 600;
         }
-        .message-area { /* Message style from first example */
+        .message-area {
             padding: 12px 18px;
             margin-bottom: 25px;
             border-radius: var(--border-radius);
@@ -270,7 +282,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: #721c24;
             border-color: #f5c6cb;
         }
-        .form-section { /* Form container style from first example */
+        .form-section {
             margin-bottom: 30px;
             padding: 25px;
             background-color: var(--light-color);
@@ -283,8 +295,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-weight: 600;
             color: #555;
         }
-        .form-section input[type=text],
-        .form-section input[type=file],
+        .form-section input[type="text"],
+        .form-section input[type="file"],
         .form-section textarea {
             width: 100%;
             padding: 12px;
@@ -294,17 +306,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-sizing: border-box;
             font-size: 1rem;
         }
-        .form-section input[readonly] {
-            background-color: #e9ecef;
-            cursor: not-allowed;
-        }
-        .tox-tinymce {
-            border: 1px solid #ccc !important;
-            border-radius: var(--border-radius) !important;
-        }
         .form-section .image-preview {
             margin-top: 10px;
-            max-width: 150px; /* Consistent preview size */
+            max-width: 150px;
             max-height: 100px;
             border: 1px solid #ddd;
             padding: 5px;
@@ -335,106 +339,113 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background-color: #5a6268;
         }
 
-        /* Table Styling from first example - adapted */
-        .data-list-section { 
-            margin-top: 30px;
-            overflow-x: auto;
-        }
-        .styled-data-table { /* New class for the slider table */
-            width: 100%;
-            border-collapse: collapse;
+        /* --- NEW CARD VIEW STYLES --- */
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
             margin-top: 20px;
+        }
+        .slider-card {
             background-color: #fff;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
-        }
-        .styled-data-table th, .styled-data-table td {
-            border: 1px solid #e0e0e0;
-            padding: 12px 15px;
-            text-align: left;
-            vertical-align: middle;
-        }
-        .styled-data-table th {
-            background-color: #f2f5f8;
-            font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-        }
-        .styled-data-table tbody tr:nth-child(even) {
-            background-color: var(--light-color);
-        }
-        .styled-data-table tbody tr:hover {
-            background-color: #e9ecef;
-        }
-        .styled-data-table img.thumbnail { /* Class for image in table */
-            display: block;
-            max-width: 80px; 
-            height: auto;
             border-radius: var(--border-radius);
-            border: 1px solid #ddd;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+            border: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .styled-data-table .actions-cell {
-            white-space: nowrap;
-            min-width: 240px; 
+        .slider-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
         }
-        .styled-data-table .actions-cell form {
-            display: inline-block;
-            margin-right: 5px;
-            margin-bottom: 5px;
+        .card-image-wrapper {
+            width: 100%;
+            height: 180px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-color);
         }
-        .styled-data-table .actions-cell button,
-        .styled-data-table .actions-cell .edit-btn {
+        .card-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .card-content {
+            padding: 15px;
+            flex-grow: 1;
+        }
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+            color: var(--dark-color);
+        }
+        .card-text-preview {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+            height: 40px; /* Approx 2 lines */
+            overflow: hidden;
+        }
+        .card-meta {
+            font-size: 0.8rem;
+            color: var(--secondary-color);
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .card-meta span {
+            display: block;
+        }
+        .card-actions {
+            background-color: var(--light-color);
+            padding: 10px 15px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .card-actions form {
+            margin: 0;
+        }
+        .card-actions button, .card-actions .edit-btn {
             padding: 6px 12px;
-            border: none;
             border-radius: var(--border-radius);
             cursor: pointer;
             font-size: 0.85rem;
             color: white;
+            border: none;
             transition: background-color 0.2s ease;
         }
-        .styled-data-table .actions-cell .edit-btn {
-            background-color: var(--warning-color);
-            color: #333;
-        }
-        .styled-data-table .actions-cell .edit-btn:hover {
-            background-color: #e0a800;
-        }
-        .styled-data-table .actions-cell button[value='delete'], /* More specific for delete button if it's a submit */
-        .styled-data-table .actions-cell form button[type="submit"] { /* General submit buttons in actions */
-            background-color: var(--danger-color);
-        }
-        .styled-data-table .actions-cell button[value='delete']:hover,
-        .styled-data-table .actions-cell form button[type="submit"]:hover {
-             background-color: #c82333;
-        }
+        .card-actions .edit-btn { background-color: var(--warning-color); color: #333; }
+        .card-actions .edit-btn:hover { background-color: #e0a800; }
+        .card-actions button[value='delete'] { background-color: var(--danger-color); }
+        .card-actions button[value='delete']:hover { background-color: #c82333; }
+        .card-actions button[value='activate'] { background-color: var(--success-color); }
+        .card-actions button[value='activate']:hover { background-color: #218838; }
+        .card-actions button[value='deactivate'] { background-color: var(--secondary-color); }
+        .card-actions button[value='deactivate']:hover { background-color: #5a6268; }
 
-        .styled-data-table .actions-cell button[value='activate'],
-        .styled-data-table .actions-cell form button[type="submit"][data-action-type='activate'] { /* For specific activate button */
-            background-color: var(--success-color);
-        }
-        .styled-data-table .actions-cell button[value='activate']:hover,
-        .styled-data-table .actions-cell form button[type="submit"][data-action-type='activate']:hover {
-            background-color: #218838;
-        }
-        .styled-data-table .actions-cell button[value='deactivate'],
-        .styled-data-table .actions-cell form button[type="submit"][data-action-type='deactivate'] { /* For specific deactivate button */
-            background-color: var(--secondary-color);
-        }
-        .styled-data-table .actions-cell button[value='deactivate']:hover,
-        .styled-data-table .actions-cell form button[type="submit"][data-action-type='deactivate']:hover {
-            background-color: #5a6268;
-        }
-        .status-active {
-            color: var(--success-color);
+        .card-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 0.8rem;
             font-weight: bold;
+            color: white;
+            z-index: 2;
         }
-        .status-inactive {
-            color: var(--secondary-color); /* Was --danger-color, changed to secondary for inactive */
-            font-weight: bold;
-        }
+        .status-active { background-color: var(--success-color); }
+        .status-inactive { background-color: var(--secondary-color); }
     </style>
 </head>
 <body>
-
     <div class="page-container">
         <h2>Slider Management</h2>
 
@@ -472,92 +483,82 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <div class="data-list-section">
             <h3>Existing Sliders</h3>
-            <table class="styled-data-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Text Preview</th>
-                        <th>Image</th>
-                        <th>Status</th>
-                        <th>Created At</th>
-                        <th>Updated At</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $sql = "SELECT sid, stitle, stext, simg, status, created_at, updated_at FROM slider ORDER BY created_at DESC";
-                    $result = $conn->query($sql);
+            <div class="card-container">
+                <?php
+                $sql = "SELECT sid, stitle, stext, simg, status, created_at, updated_at, updated_by FROM slider ORDER BY created_at DESC";
+                $result = $conn->query($sql);
 
-                    if ($result && $result->num_rows > 0) {
-                        while($row = $result->fetch_assoc()) {
-                            echo "<tr>";
-                            echo "<td>" . $row["sid"] . "</td>";
-                            echo "<td>" . htmlspecialchars($row["stitle"]) . "</td>";
-                            echo "<td>" . htmlspecialchars(mb_substr(strip_tags($row["stext"]), 0, 50)) . (mb_strlen(strip_tags($row["stext"])) > 50 ? '...' : '') . "</td>";
-                            echo "<td>";
-                            if (!empty($row["simg"]) && file_exists($row["simg"])) {
-                                echo "<img src='" . htmlspecialchars($row["simg"]) . "' alt='Slider Image' class='thumbnail'>";
-                            } else {
-                                echo "<span>No Image</span>";
-                            }
-                            echo "</td>";
-                            echo "<td><span class='status-" . ($row["status"] == 1 ? "active" : "inactive") . "'>" . ($row["status"] == 1 ? "Active" : "Inactive") . "</span></td>";
-                            echo "<td>" . date("Y-m-d", strtotime($row["created_at"])) . "</td>";
-                            echo "<td>" . date("Y-m-d", strtotime($row["updated_at"])) . "</td>";
-                            echo "<td class='actions-cell'>";
+                if ($result && $result->num_rows > 0) {
+                    while($row = $result->fetch_assoc()) {
+                ?>
+                        <div class="slider-card">
+                            <div class="card-status status-<?php echo ($row['status'] == 1 ? 'active' : 'inactive'); ?>">
+                                <?php echo ($row['status'] == 1 ? 'Active' : 'Inactive'); ?>
+                            </div>
                             
-                            echo "<button class='edit-btn' 
-                                    data-sid='" . $row["sid"] . "' 
-                                    data-stitle='" . htmlspecialchars($row["stitle"]) . "' 
-                                    data-stext='" . htmlspecialchars($row["stext"]) . "' 
-                                    data-simg='" . htmlspecialchars($row["simg"]) . "'>Edit</button>";
+                            <div class="card-image-wrapper">
+                                <?php if (!empty($row['simg']) && file_exists($row['simg'])): ?>
+                                    <img src="<?php echo htmlspecialchars($row['simg']); ?>" alt="Slider Image">
+                                <?php else: ?>
+                                    <span>No Image</span>
+                                <?php endif; ?>
+                            </div>
 
-                            echo "<form action='' method='POST' onsubmit='return confirm(\"Are you sure you want to delete this slider?\");'>";
-                            echo "<input type='hidden' name='action' value='delete'>";
-                            echo "<input type='hidden' name='sid' value='" . $row["sid"] . "'>";
-                            echo "<button type='submit' value='delete'>Delete</button>";
-                            echo "</form>";
+                            <div class="card-content">
+                                <h4 class="card-title"><?php echo htmlspecialchars($row['stitle']); ?></h4>
+                                <p class="card-text-preview">
+                                    <?php echo htmlspecialchars(mb_substr(strip_tags($row['stext']), 0, 100)) . (mb_strlen(strip_tags($row['stext'])) > 100 ? '...' : ''); ?>
+                                </p>
+                                <div class="card-meta">
+                                    <span><strong>Updated By:</strong> <?php echo htmlspecialchars($row['updated_by']); ?></span>
+                                    <span><strong>Updated On:</strong> <?php echo date("Y-m-d", strtotime($row['updated_at'])); ?></span>
+                                </div>
+                            </div>
 
-                            if ($row["status"] == 1) {
-                                echo "<form action='' method='POST'>";
-                                echo "<input type='hidden' name='action' value='deactivate'>";
-                                echo "<input type='hidden' name='sid' value='" . $row["sid"] . "'>";
-                                echo "<button type='submit' value='deactivate' data-action-type='deactivate'>Deactivate</button>";
-                                echo "</form>";
-                            } else {
-                                echo "<form action='' method='POST'>";
-                                echo "<input type='hidden' name='action' value='activate'>";
-                                echo "<input type='hidden' name='sid' value='" . $row["sid"] . "'>";
-                                echo "<button type='submit' value='activate' data-action-type='activate'>Activate</button>";
-                                echo "</form>";
-                            }
-                            echo "</td>";
-                            echo "</tr>";
-                        }
-                    } else {
-                        echo "<tr><td colspan='8' style='text-align: center; padding: 20px;'>No sliders found.</td></tr>";
+                            <div class="card-actions">
+                                <button class='edit-btn' 
+                                        data-sid='<?php echo $row['sid']; ?>' 
+                                        data-stitle='<?php echo htmlspecialchars($row['stitle']); ?>' 
+                                        data-stext='<?php echo htmlspecialchars($row['stext']); ?>' 
+                                        data-simg='<?php echo htmlspecialchars($row['simg']); ?>'>Edit</button>
+
+                                <form action='' method='POST' onsubmit='return confirm("Are you sure you want to delete this slider?");'>
+                                    <input type='hidden' name='action' value='delete'>
+                                    <input type='hidden' name='sid' value='<?php echo $row['sid']; ?>'>
+                                    <button type='submit' value='delete'>Delete</button>
+                                </form>
+
+                                <?php if ($row['status'] == 1): ?>
+                                    <form action='' method='POST'>
+                                        <input type='hidden' name='action' value='deactivate'>
+                                        <input type='hidden' name='sid' value='<?php echo $row['sid']; ?>'>
+                                        <button type='submit' value='deactivate'>Deactivate</button>
+                                    </form>
+                                <?php else: ?>
+                                    <form action='' method='POST'>
+                                        <input type='hidden' name='action' value='activate'>
+                                        <input type='hidden' name='sid' value='<?php echo $row['sid']; ?>'>
+                                        <button type='submit' value='activate'>Activate</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                <?php
                     }
-                    ?>
-                </tbody>
-            </table>
+                } else {
+                    echo "<p style='text-align: center; padding: 20px; width: 100%;'>No sliders found.</p>";
+                }
+                ?>
+            </div>
         </div>
     </div>
 
-<script src="https://cdn.tiny.cloud/1/9tftpew6nchs467m3z4d2v9e5xmvvvl8bis1m0g7iqt8w7bs/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/0b4l260nbwgikhaerenongs5zgl39j7pja3yimxlbjkkfrs6/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
 <script>
   tinymce.init({
-    selector: '#stext', // Target the specific textarea by ID
+    selector: '#stext',
     plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount checklist mediaembed casechange formatpainter pageembed a11ychecker tinymcespellchecker permanentpen powerpaste advtable advcode editimage advtemplate ai mentions tinycomments tableofcontents footnotes mergetags autocorrect typography inlinecss markdown importword exportword exportpdf',
     toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table mergetags | addcomment showcomments | spellcheckdialog a11ycheck typography | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
-    tinycomments_mode: 'embedded',
-    tinycomments_author: 'Author name',
-    mergetags_list: [
-      { value: 'First.Name', title: 'First Name' },
-      { value: 'Email', title: 'Email' },
-    ],
-    ai_request: (request, respondWith) => respondWith.string(() => Promise.reject('See docs to implement AI Assistant')),
   });
 </script>
 
@@ -565,9 +566,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     document.addEventListener('DOMContentLoaded', function() {
         const sliderForm = document.getElementById('sliderForm');
         const actionInput = document.getElementById('action');
-        const sidInput = document.getElementById('sid'); // Slider ID input
+        const sidInput = document.getElementById('sid');
         const stitleInput = document.getElementById('stitle');
-        const stextTextarea = document.getElementById('stext'); // The textarea for TinyMCE
+        const stextTextarea = document.getElementById('stext');
         const simgInput = document.getElementById('simg');
         const existingSimgInput = document.getElementById('existing_simg');
         const currentSimgPreview = document.getElementById('current_simg_preview');
@@ -579,7 +580,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             button.addEventListener('click', function() {
                 const sid = this.getAttribute('data-sid');
                 const stitle = this.getAttribute('data-stitle');
-                const stextData = this.getAttribute('data-stext'); // Renamed to avoid conflict with stextTextarea
+                const stextData = this.getAttribute('data-stext');
                 const simg = this.getAttribute('data-simg');
 
                 formTitle.textContent = 'Edit Slider';
@@ -588,11 +589,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 stitleInput.value = stitle;
                 existingSimgInput.value = simg;
 
-                // Set content for TinyMCE
                 if (typeof tinymce !== 'undefined' && tinymce.get('stext')) {
                     tinymce.get('stext').setContent(stextData || '');
                 } else {
-                    stextTextarea.value = stextData; // Fallback if TinyMCE not ready
+                    stextTextarea.value = stextData;
                 }
 
                 if (simg && simg !== '') {
@@ -623,11 +623,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             currentSimgPreview.src = '#';
             currentSimgPreview.style.display = 'none';
 
-            // Clear content for TinyMCE
             if (typeof tinymce !== 'undefined' && tinymce.get('stext')) {
                 tinymce.get('stext').setContent('');
             } else {
-                stextTextarea.value = ''; // Fallback
+                stextTextarea.value = '';
             }
 
             submitButton.textContent = 'Save Slider';
@@ -644,7 +643,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
                 reader.readAsDataURL(file);
             } else {
-                // If no new file is selected during an update, show existing image
                 const existingImg = existingSimgInput.value;
                 if (actionInput.value === 'update' && existingImg && existingImg !== '') {
                     currentSimgPreview.src = existingImg;
@@ -657,6 +655,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         });
     });
 </script>
+
+
+<!-- Place the first <script> tag in your HTML's <head> -->
+<script src="https://cdn.tiny.cloud/1/0b4l260nbwgikhaerenongs5zgl39j7pja3yimxlbjkkfrs6/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+
+<!-- Place the following <script> and <textarea> tags your HTML's <body> -->
+<script>
+  tinymce.init({
+    selector: 'textarea',
+    plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+  });
+</script>
+
 
 </body>
 </html>

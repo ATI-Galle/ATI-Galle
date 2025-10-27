@@ -4,12 +4,61 @@ session_start();
 
 // Check if the user is already logged in, if yes then redirect them to the welcome page
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
-    header("location: index.php"); // Changed redirection to index.php as mentioned
+    header("location: index.php");
     exit;
 }
 
 // Include config file
 require_once "include/config.php";
+
+// ---- ADDED: Helper functions for logging ----
+
+/**
+ * Gets the approximate location from an IP address using a free API.
+ * NOTE: For high-volume production use, consider a paid, more robust service.
+ * @param string $ip The IP address.
+ * @return string The location details or a default message.
+ */
+function get_location_from_ip($ip) {
+    // This function requires the cURL extension to be enabled in your PHP installation.
+    $url = "http://ip-api.com/json/{$ip}";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if ($response) {
+        $data = json_decode($response, true);
+        if ($data && $data['status'] == 'success') {
+            return $data['city'] . ', ' . $data['regionName'] . ', ' . $data['country'];
+        }
+    }
+    return 'Location not found';
+}
+
+/**
+ * Inserts a login attempt record into the database.
+ * @param mysqli $conn The database connection object.
+ * @param string $username The username that was used for the attempt.
+ * @param string $status The result of the login attempt ('success' or 'failed').
+ */
+function log_login_attempt($conn, $username, $status) {
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
+    $location = get_location_from_ip($ip_address);
+
+    $sql = "INSERT INTO login_logs (user_cid, ip_address, location, user_agent, status) VALUES (?, ?, ?, ?, ?)";
+
+    if ($stmt = mysqli_prepare($conn, $sql)) {
+        mysqli_stmt_bind_param($stmt, "sssss", $username, $ip_address, $location, $user_agent, $status);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+}
+
+// ---- END: Helper functions for logging ----
+
 
 // Define variables and initialize with empty values
 $username = $password = "";
@@ -34,27 +83,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Validate credentials
     if (empty($username_err) && empty($password_err)) {
-        // Prepare a select statement to fetch user details including status
-        $sql = "SELECT id, username, password, status FROM users WHERE username = ?";
+        // Prepare a select statement to fetch user details
+        $sql = "SELECT id, username, password, status, role, cid FROM users WHERE username = ?";
 
         if ($stmt = mysqli_prepare($conn, $sql)) {
             // Bind variables to the prepared statement as parameters
             mysqli_stmt_bind_param($stmt, "s", $param_username);
-
-            // Set parameters
             $param_username = $username;
 
             // Attempt to execute the prepared statement
             if (mysqli_stmt_execute($stmt)) {
-                // Store result
                 mysqli_stmt_store_result($stmt);
 
-                // Check if username exists, if yes then verify password and status
+                // Check if username exists
                 if (mysqli_stmt_num_rows($stmt) == 1) {
-                    // Bind result variables, including the status
-                    mysqli_stmt_bind_result($stmt, $id, $username, $hashed_password, $status);
+                    mysqli_stmt_bind_result($stmt, $id, $username, $hashed_password, $status, $role, $cid);
                     if (mysqli_stmt_fetch($stmt)) {
-                        // Check if the user's status is 1 (active)
+                        // Check if the user's account is active
                         if ($status == 1) {
                             if (password_verify($password, $hashed_password)) {
                                 // Password is correct, so start a new session
@@ -64,22 +109,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 $_SESSION["loggedin"] = true;
                                 $_SESSION["id"] = $id;
                                 $_SESSION["username"] = $username;
+                                $_SESSION["role"] = $role;
+                                $_SESSION["cid"] = $cid;
 
-                                // Redirect user to welcome page
-                                header("location: index.php"); // Changed redirection to index.php
-                                exit; // Added exit after header
+                                // ---- ADDED: Log the successful login attempt ----
+                                log_login_attempt($conn, $username, 'success');
+
+                                // Redirect user to the welcome page
+                                header("location: index.php");
+                                exit;
                             } else {
-                                // Password is not valid, display a generic error message
+                                // Password is not valid
                                 $login_err = "Invalid username or password.";
+                                // ---- ADDED: Log the failed login attempt ----
+                                log_login_attempt($conn, $username, 'failed');
                             }
                         } else {
-                            // User's status is not 1, display an error message
+                            // User's account is inactive
                             $login_err = "Your account is inactive. Please contact the administrator.";
+                             // ---- ADDED: Log the failed login attempt ----
+                            log_login_attempt($conn, $username, 'failed');
                         }
                     }
                 } else {
-                    // Username doesn't exist, display a generic error message
+                    // Username doesn't exist
                     $login_err = "Invalid username or password.";
+                     // ---- ADDED: Log the failed login attempt (user not found) ----
+                    log_login_attempt($conn, $username, 'failed');
                 }
             } else {
                 echo "Oops! Something went wrong. Please try again later.";
@@ -105,44 +161,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <style>
         body {
             font-family: sans-serif;
-            background-color: #f8f9fa; /* Light grey background */
+            background-color: #f8f9fa;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Ensure full viewport height */
-            margin: 0; /* Remove default body margin */
-            padding-top: 120px; /* Add padding to prevent overlap if logo is higher or larger */
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 120px;
             box-sizing: border-box;
         }
 
         .logo {
             position: absolute;
-            top: 30px; /* Adjusted top position */
+            top: 30px;
             left: 50%;
-            transform: translateX(-50%); /* Horizontally center the logo */
-            /* Removed bottom and margin:auto which were causing issues */
-            z-index: 10; /* Ensure logo is above other elements if any overlap was intended (though not recommended here) */
+            transform: translateX(-50%);
+            z-index: 10;
         }
 
         .logo img {
-            height: 70px; /* Set desired height */
-            /* 'height: auto;' was redundant here as the next line overrides it */
-            display: block; /* Helps with layout and margin behavior */
+            height: 70px;
+            display: block;
         }
 
         .wrapper {
-            background-color: #fff; /* White background for the form */
+            background-color: #fff;
             padding: 30px;
-            border-radius: 8px; /* Rounded corners */
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-            width: 400px; /* Adjusted width for better responsiveness */
-            max-width: 90%; /* Ensure it doesn't get too wide on smaller screens */
-            /* position: relative; /* ensure wrapper is in flow and can have z-index if needed, though not primary fix here */
-            /* z-index: 1; /* Ensure wrapper is prioritized if stacking context issues arise */
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            max-width: 90%;
         }
 
         h2 {
-            color: #343a40; /* Dark grey heading */
+            color: #343a40;
             margin-bottom: 20px;
             text-align: center;
         }
@@ -154,20 +206,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         label {
             display: block;
             margin-bottom: 5px;
-            color: #495057; /* Grey label text */
+            color: #495057;
             font-weight: bold;
         }
 
         .form-control {
             width: 100%;
             padding: 10px;
-            border: 1px solid #ced4da; /* Light grey border */
+            border: 1px solid #ced4da;
             border-radius: 4px;
-            box-sizing: border-box; /* Ensure padding doesn't affect width */
+            box-sizing: border-box;
         }
 
         .form-control.is-invalid {
-            border-color: #dc3545; /* Red border for invalid input */
+            border-color: #dc3545;
         }
 
         .invalid-feedback {
@@ -186,7 +238,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .btn-primary {
-            background-color: #007bff; /* Blue primary button */
+            background-color: #007bff;
             color: #fff;
             border: none;
             padding: 10px 20px;
@@ -198,7 +250,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .btn-primary:hover {
-            background-color: #0056b3; /* Darker blue on hover */
+            background-color: #0056b3;
         }
 
         .mt-3 {
@@ -210,7 +262,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .text-muted {
-            color: #6c757d; /* Light grey text */
+            color: #6c757d;
         }
 
         .text-primary {
@@ -235,7 +287,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <?php
         if (!empty($login_err)) {
-            echo '<div class="alert alert-danger">' . $login_err . '</div>';
+            echo '<div class="alert alert-danger">' . htmlspecialchars($login_err) . '</div>';
         }
         ?>
 
@@ -243,12 +295,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="form-group">
                 <label>Username</label>
                 <input type="text" name="username" class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($username); ?>">
-                <span class="invalid-feedback"><?php echo $username_err; ?></span>
+                <span class="invalid-feedback"><?php echo htmlspecialchars($username_err); ?></span>
             </div>
             <div class="form-group">
                 <label>Password</label>
                 <input type="password" name="password" class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>">
-                <span class="invalid-feedback"><?php echo $password_err; ?></span>
+                <span class="invalid-feedback"><?php echo htmlspecialchars($password_err); ?></span>
             </div>
             <div class="form-group">
                 <input type="submit" class="btn btn-primary" value="Login">

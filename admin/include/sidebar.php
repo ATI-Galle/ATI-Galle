@@ -1,3 +1,14 @@
+<?php
+// This check ensures the session is started, which is necessary to access $_SESSION variables.
+// It's safe to include even if another file already started the session.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// --- AUTHORIZATION LOGIC ---
+// Determine if the current user has administrative privileges.
+$has_admin_access = (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin') || (isset($_SESSION['cid']) && $_SESSION['cid'] === 'SAdmin');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +24,7 @@
             padding: 0;
             background-color: #f8f9fa;
             color: #333;
-            margin-top:100px;        }
+            margin-top:100px;           }
 
         .content-wrapper {
             margin-left: 260px;
@@ -198,12 +209,10 @@
     </style>
 </head>
 <body>
-    <!-- Mobile Toggle Button -->
     <button class="sidebar-toggle" id="sidebarToggle">
         <i class="fas fa-bars"></i>
     </button>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <button class="collapse-toggle" id="collapseToggle">
@@ -255,11 +264,20 @@
                     <i class="fas fa-chevron-right menu-arrow"></i>
                 </a>
                 <ul class="sub-menu" id="courseMenu">
+                   
+
+
+          
+                     <?php if ($has_admin_access): ?>
+
                     <li class="nav-item">
                         <a class="nav-link" href="course.php">
                             <span class="menu-title">Manage Courses</span>
                         </a>
                     </li>
+
+                      <?php endif; ?>
+
                     <li class="nav-item">
                         <a class="nav-link" href="module.php">
                             <span class="menu-title">Manage Module</span>
@@ -283,7 +301,7 @@
                 </ul>
             </li>
 
-
+            <?php if ($has_admin_access): ?>
             <li class="nav-item">
                 <a class="nav-link" href="#Admins" data-toggle="collapse" aria-expanded="false">
                     <i class="fas fa-user-plus menu-icon"></i>
@@ -298,7 +316,10 @@
                     </li>
                 </ul>
             </li>
+            <?php endif; ?>
 
+
+ <?php if ($has_admin_access): ?>
 
             <li class="nav-item">
                 <a class="nav-link" href="#reviews" data-toggle="collapse" aria-expanded="false">
@@ -315,6 +336,8 @@
                 </ul>
             </li>
 
+            <?php endif; ?>
+
             <li class="nav-item">
                 <a class="nav-link" href="#newsMenu" data-toggle="collapse" aria-expanded="false">
                     <i class="fas fa-newspaper menu-icon"></i>
@@ -329,6 +352,28 @@
                     </li>
                 </ul>
             </li>
+
+
+
+
+            <li class="nav-item">
+                <a class="nav-link" href="#Research" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-newspaper menu-icon"></i>
+                    <span class="menu-title">Research</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="Research">
+                    <li class="nav-item">
+                        <a class="nav-link" href="research.php">
+                            <span class="menu-title">Manage Research</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+
+
+
 
             <li class="nav-item">
                 <a class="nav-link" href="#eventsMenu" data-toggle="collapse" aria-expanded="false">
@@ -360,27 +405,44 @@
                 </ul>
             </li>
 
+
             <li class="nav-item">
-                <a class="nav-link" href="#siteSettingsMenu" data-toggle="collapse" aria-expanded="false">
+                <a class="nav-link" href="#siteSettingsten" data-toggle="collapse" aria-expanded="false">
                     <i class="fas fa-cog menu-icon"></i>
-                    <span class="menu-title">Site Settings</span>
+                    <span class="menu-title">Tenders</span>
                     <i class="fas fa-chevron-right menu-arrow"></i>
                 </a>
-                <ul class="sub-menu" id="siteSettingsMenu">
+                <ul class="sub-menu" id="siteSettingsten">
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <span class="menu-title">Manage Site</span>
+                        <a class="nav-link" href="manage-tenders.php">
+                            <span class="menu-title">Manage Tenders</span>
                         </a>
                     </li>
                 </ul>
             </li>
+
+            <?php if ($has_admin_access): ?>
+            <li class="nav-item">
+                <a class="nav-link" href="#siteSettings" data-toggle="collapse" aria-expanded="false">
+                    <i class="fas fa-cog menu-icon"></i>
+                    <span class="menu-title">Site Settings</span>
+                    <i class="fas fa-chevron-right menu-arrow"></i>
+                </a>
+                <ul class="sub-menu" id="siteSettings">
+                    <li class="nav-item">
+                        <a class="nav-link" href="manage-about-us.php">
+                            <span class="menu-title">Manage About Us </span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <?php endif; ?>
 
         </ul>
     </div>
 
   
 
-    <!-- JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Toggle mobile sidebar
